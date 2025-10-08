@@ -1,0 +1,3 @@
+name: elevai-connect
+runtime: python
+description: A modular Pulumi project for Amazon Connect infrastructure with Python

@@ -1,0 +1,210 @@
+# Copyright 2024-2025 ELEVAI
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+KMS Key Resources
+
+Creates and configures KMS keys for encrypting Amazon Connect data.
+"""
+
+from typing import Dict
+import pulumi
+import pulumi_aws as aws
+
+
+def create_connect_data_key(tags: Dict[str, str]) -> aws.kms.Key:
+    """
+    Create a customer-managed KMS key for encrypting Amazon Connect data.
+    
+    This key is used for encrypting data in S3 buckets and can be used
+    before the Amazon Connect instance is created, avoiding circular dependencies.
+    
+    Args:
+        tags: Tags to apply to the KMS key
+        
+    Returns:
+        KMS key resource
+    """
+    # Get current AWS caller identity and region
+    current = aws.get_caller_identity()
+    region = aws.get_region()
+    
+    # Create KMS key with appropriate policy
+    key = aws.kms.Key(
+        "connect-data-key",
+        description="Customer-managed key for Amazon Connect data encryption",
+        deletion_window_in_days=30,
+        enable_key_rotation=True,
+        policy=pulumi.Output.all(
+            current.account_id,
+            region.id 
+        ).apply(lambda args: _get_key_policy(args[0], args[1])),
+        tags={**tags, "Name": "CONNECT_DATA_KEY", "Purpose": "ConnectDataEncryption"},
+    )
+    
+    # Create alias for easy reference
+    aws.kms.Alias(
+        "connect-data-key-alias",
+        name="alias/connect-data-encryption",
+        target_key_id=key.id,
+    )
+    
+    # Export key ARN for reference
+    pulumi.export("connect_data_key_arn", key.arn)
+    pulumi.export("connect_data_key_id", key.id)
+    
+    return key
+
+
+def _get_key_policy(account_id: str, region: str) -> str:
+    """
+    Generate KMS key policy that allows:
+    - Root account full access
+    - Amazon Connect service access for encryption/decryption
+    - S3 service access for encryption/decryption
+    - CloudWatch Logs access for encryption
+    - Wisdom (Amazon Q) service access for encryption/decryption
+    - AppIntegrations service access for encryption/decryption
+    - EventBridge service access for SQS encryption
+    
+    Args:
+        account_id: AWS account ID
+        region: AWS region
+        
+    Returns:
+        JSON policy document
+    """
+    return f"""{{
+  "Version": "2012-10-17",
+  "Id": "connect-data-key-policy",
+  "Statement": [
+    {{
+      "Sid": "Enable IAM User Permissions",
+      "Effect": "Allow",
+      "Principal": {{
+        "AWS": "arn:aws:iam::{account_id}:root"
+      }},
+      "Action": "kms:*",
+      "Resource": "*"
+    }},
+    {{
+      "Sid": "Allow Amazon Connect to use the key",
+      "Effect": "Allow",
+      "Principal": {{
+        "Service": "connect.amazonaws.com"
+      }},
+      "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey",
+        "kms:CreateGrant"
+      ],
+      "Resource": "*",
+      "Condition": {{
+        "StringEquals": {{
+          "kms:ViaService": [
+            "s3.{region}.amazonaws.com",
+            "connect.{region}.amazonaws.com"
+          ]
+        }}
+      }}
+    }},
+    {{
+      "Sid": "Allow S3 to use the key for server-side encryption",
+      "Effect": "Allow",
+      "Principal": {{
+        "Service": "s3.amazonaws.com"
+      }},
+      "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
+      ],
+      "Resource": "*",
+      "Condition": {{
+        "StringEquals": {{
+          "aws:SourceAccount": "{account_id}"
+        }}
+      }}
+    }},
+    {{
+      "Sid": "Allow CloudWatch Logs to use the key",
+      "Effect": "Allow",
+      "Principal": {{
+        "Service": "logs.{region}.amazonaws.com"
+      }},
+      "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:CreateGrant",
+        "kms:DescribeKey"
+      ],
+      "Resource": "*",
+      "Condition": {{
+        "ArnLike": {{
+          "kms:EncryptionContext:aws:logs:arn": "arn:aws:logs:{region}:{account_id}:log-group:*"
+        }}
+      }}
+    }},
+    {{
+      "Sid": "Allow Wisdom (Amazon Q) to use the key",
+      "Effect": "Allow",
+      "Principal": {{
+        "Service": "wisdom.amazonaws.com"
+      }},
+      "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey",
+        "kms:CreateGrant",
+        "kms:DescribeKey"
+      ],
+      "Resource": "*",
+      "Condition": {{
+        "StringEquals": {{
+          "aws:SourceAccount": "{account_id}"
+        }}
+      }}
+    }},
+    {{
+      "Sid": "Allow AppIntegrations to use the key",
+      "Effect": "Allow",
+      "Principal": {{
+        "Service": "app-integrations.amazonaws.com"
+      }},
+      "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey",
+        "kms:CreateGrant"
+      ],
+      "Resource": "*",
+      "Condition": {{
+        "StringEquals": {{
+          "aws:SourceAccount": "{account_id}"
+        }}
+      }}
+    }},
+    {{
+      "Sid": "Allow EventBridge to use the key for SQS",
+      "Effect": "Allow",
+      "Principal": {{
+        "Service": "events.amazonaws.com"
+      }},
+      "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
+      ],
+      "Resource": "*"
+    }}
+  ]
+}}"""
