@@ -43,7 +43,7 @@ All Amazon Connect S3 buckets have server access logging enabled, sending logs t
 6. **contact-evaluations** → logs to `s3-access-logs/contact-evaluations/`
 7. **email-messages** → logs to `s3-access-logs/email-messages/`
 8. **q-knowledge-bucket** → logs to `s3-access-logs/q-knowledge-bucket/`
-9. **connect-logs-bucket** (Kinesis Firehose) → logs to `s3-access-logs/connect-logs-bucket/`
+9. **contact-records** (Kinesis Firehose) → logs to `s3-access-logs/contact-records/`
 
 ### Centralized Logging Bucket:
 - **s3-access-logs** - Receives all access logs from the above buckets

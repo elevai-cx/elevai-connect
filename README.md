@@ -9,6 +9,10 @@
 
 A comprehensive, project for deploying Amazon Connect contact centers with Python. This project goes beyond basic infrastructure deployment to provide a battle-tested foundation with production-ready monitoring, intelligent alerting, SAML authentication, and additional out of the box features.
 
+## Architecture overview
+
+![](/elevai-connect.drawio.png)
+
 ## 💡 Why This Project Exists
 
 Amazon Connect is a powerful cloud contact center (CCaaS) platform that lives within your AWS account. However, deploying Connect in production requires integrating numerous AWS services - S3, DynamoDB, Lambda, CloudWatch, IAM, Secrets Manager, and more.

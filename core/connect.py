@@ -480,14 +480,14 @@ def create_contact_flow_logs_firehose(tags: Dict[str, str], kms_key: aws.kms.Key
     """
     # Create S3 bucket for logs with Object Lock enabled
     log_bucket = aws.s3.Bucket(
-        "connect-logs-bucket",
+        "contact-records",
         object_lock_enabled=True,
         tags={**tags, "Purpose": "ContactFlowLogs"},
     )
     
     # Enable versioning
     aws.s3.BucketVersioning(
-        "connect-logs-bucket-versioning",
+        "contact-records-versioning",
         bucket=log_bucket.id,
         versioning_configuration=aws.s3.BucketVersioningVersioningConfigurationArgs(
             status="Enabled",
@@ -496,7 +496,7 @@ def create_contact_flow_logs_firehose(tags: Dict[str, str], kms_key: aws.kms.Key
     
     # Enable KMS encryption using customer-managed key
     aws.s3.BucketServerSideEncryptionConfiguration(
-        "connect-logs-bucket-encryption",
+        "contact-records-encryption",
         bucket=log_bucket.id,
         rules=[
             aws.s3.BucketServerSideEncryptionConfigurationRuleArgs(
@@ -511,7 +511,7 @@ def create_contact_flow_logs_firehose(tags: Dict[str, str], kms_key: aws.kms.Key
     
     # Block public access
     aws.s3.BucketPublicAccessBlock(
-        "connect-logs-bucket-public-access-block",
+        "contact-records-public-access-block",
         bucket=log_bucket.id,
         block_public_acls=True,
         block_public_policy=True,
@@ -550,7 +550,7 @@ def create_contact_flow_logs_firehose(tags: Dict[str, str], kms_key: aws.kms.Key
     )
     
     aws.s3.BucketPolicy(
-        "connect-logs-bucket-ssl-policy",
+        "contact-records-ssl-policy",
         bucket=log_bucket.id,
         policy=log_bucket_ssl_policy,
     )
@@ -562,7 +562,7 @@ def create_contact_flow_logs_firehose(tags: Dict[str, str], kms_key: aws.kms.Key
     
     # Add lifecycle policy
     aws.s3.BucketLifecycleConfiguration(
-        "connect-logs-bucket-lifecycle",
+        "contact-records-lifecycle",
         bucket=log_bucket.id,
         rules=[
             aws.s3.BucketLifecycleConfigurationRuleArgs(
@@ -583,10 +583,10 @@ def create_contact_flow_logs_firehose(tags: Dict[str, str], kms_key: aws.kms.Key
     
     # Enable server access logging
     aws.s3.BucketLogging(
-        "connect-logs-bucket-logging",
+        "contact-records-logging",
         bucket=log_bucket.id,
         target_bucket=logging_bucket.id,
-        target_prefix="connect-logs-bucket/",
+        target_prefix="contact-records/",
     )
     
     # Create IAM role for Firehose
@@ -637,7 +637,7 @@ def create_contact_flow_logs_firehose(tags: Dict[str, str], kms_key: aws.kms.Key
     
     # Create Firehose delivery stream with explicit dependency and encryption
     firehose = aws.kinesis.FirehoseDeliveryStream(
-        "connect-logs-firehose",
+        "contact-records",
         destination="extended_s3",
         extended_s3_configuration=aws.kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationArgs(
             role_arn=firehose_role.arn,
