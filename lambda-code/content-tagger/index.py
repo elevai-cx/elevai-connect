@@ -15,14 +15,22 @@
 """
 Content Tagger Lambda Function
 
-Automatically tags Amazon Q Connect content based on:
-1. Folder-based tagging rules (s3.json)
-2. Per-document meta files (.meta.json)
+Automatically tags Amazon Q Connect content when files are created or updated in S3.
 
-Triggers via:
-- EventBridge S3 events → SQS → Lambda (batch processing)
-- Supports partial batch failures (batchItemFailures)
-- 30-second batch window for efficient processing
+TAGGING LOGIC:
+1. Meta files (.meta.json): Apply tags from the meta file to the associated document
+2. Document files: Apply folder-based tags from s3.json (meta file tags override if present)
+3. Config files (s3.json): Log update but don't retag existing content automatically
+
+WORKFLOW:
+- EventBridge captures ALL Object Created events in the knowledge base S3 bucket
+- Events are batched via SQS (30-second window, up to 10 messages)
+- Lambda processes batch with partial failure support (batchItemFailures)
+- Documents are tagged in Q Connect knowledge base based on their location and meta files
+
+CONFIG UPDATES:
+When s3.json is updated, NEW rules apply to future uploads/updates only.
+To retag existing content, re-upload files or use a separate retagging script.
 """
 
 import json
@@ -294,8 +302,16 @@ def handle_config_update(object_key: str) -> Dict[str, Any]:
     """
     Handle config file update.
     
-    When s3.json is updated, we log it but don't retag everything.
-    Users can manually trigger retagging if needed.
+    When s3.json is updated, we log it but DON'T automatically retag all existing documents.
+    
+    This is intentional because:
+    - Retagging all content could be expensive/slow for large knowledge bases
+    - It gives users control over when to retag
+    - New folder rules will automatically apply to newly uploaded/updated files
+    
+    To retag existing content after config changes:
+    1. Re-upload the files to S3 (triggers Object Created event)
+    2. Or use a separate script to iterate and retag content via Q Connect API
     
     Args:
         object_key: Config file key
@@ -304,7 +320,7 @@ def handle_config_update(object_key: str) -> Dict[str, Any]:
         Result dictionary
     """
     logger.info(f"Config file updated: {object_key}")
-    logger.info("Note: Config changes affect new content only. Retag existing content manually if needed.")
+    logger.info("Note: Config changes affect new/updated content only. Existing content is NOT retagged automatically.")
     
     metrics.add_metric(name="ConfigFileUpdate", unit=MetricUnit.Count, value=1)
     

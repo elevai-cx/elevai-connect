@@ -62,7 +62,7 @@ def create_lambda_with_requirements(
     - ARM64 architecture
     - Memory and timeout settings
     - Requirements.txt installation
-    - CloudWatch log group creation
+    - CloudWatch log group creation (retention configurable via cloudwatch:logRetentionDays)
     - AWS PowerTools environment variables
     - Optional Amazon Connect association
     
@@ -131,10 +131,20 @@ def create_lambda_with_requirements(
     )
     
     # Create CloudWatch log group with retention
+    cloudwatch_config = pulumi.Config("cloudwatch")
+    log_retention_days = cloudwatch_config.get_int("logRetentionDays")
+    
+    # Default to 30 days if not specified
+    if log_retention_days is None:
+        log_retention_days = 30
+    
+    # If retention is 0, set to None (never expire)
+    retention_in_days = None if log_retention_days == 0 else log_retention_days
+    
     aws.cloudwatch.LogGroup(
         f"{name}-logs",
         name=pulumi.Output.concat("/aws/lambda/", function.name),
-        retention_in_days=7,
+        retention_in_days=retention_in_days,
         tags=tags,
     )
     

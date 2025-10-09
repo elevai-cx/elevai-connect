@@ -395,11 +395,12 @@ def create_content_tagger_eventbridge_rules(
     tags: Dict[str, str]
 ) -> Dict[str, aws.cloudwatch.EventRule]:
     """
-    Create EventBridge rule to trigger SQS queue for .json files.
+    Create EventBridge rule to trigger SQS queue for all Object Created events.
     
     Triggers on:
-    - Meta files (.meta.json)
-    - Config files (config/content-tagging/*.json)
+    - Meta files (.meta.json) - tagged based on meta file content
+    - Document files (all other files) - tagged based on folder rules
+    - Config files (config/content-tagging/*.json) - logged but not retagged
     
     Args:
         bucket: S3 bucket
@@ -409,10 +410,10 @@ def create_content_tagger_eventbridge_rules(
     Returns:
         Dictionary of EventBridge rules
     """
-    # Simplified rule to match ANY .json file
-    json_files_rule = aws.cloudwatch.EventRule(
-        "json-files-rule",
-        description="Trigger SQS for any .json file (create/update)",
+    # Match ALL Object Created events (including all file types)
+    all_objects_rule = aws.cloudwatch.EventRule(
+        "amazon-q-document-created",
+        description="Trigger SQS for all Object Created events with the Amazon Q bucket",
         event_pattern=bucket.id.apply(
             lambda bucket_name: pulumi.Output.json_dumps({
                 "source": ["aws.s3"],
@@ -420,14 +421,11 @@ def create_content_tagger_eventbridge_rules(
                 "detail": {
                     "bucket": {
                         "name": [bucket_name]
-                    },
-                    "object": {
-                        "key": [{"suffix": ".json"}]
                     }
                 }
             })
         ),
-        tags={**tags, "Name": "json-files-rule"},
+        tags={**tags, "Name": "amazon-q-document-created"},
     )
     
     # Allow EventBridge to send messages to SQS - must be created before EventTarget
@@ -436,7 +434,7 @@ def create_content_tagger_eventbridge_rules(
         queue_url=sqs_queue.url,
         policy=pulumi.Output.all(
             sqs_queue.arn,
-            json_files_rule.arn
+            all_objects_rule.arn
         ).apply(
             lambda args: pulumi.Output.json_dumps({
                 "Version": "2012-10-17",
@@ -462,13 +460,13 @@ def create_content_tagger_eventbridge_rules(
     
     # Target SQS queue - depends on queue policy being in place
     aws.cloudwatch.EventTarget(
-        "json-files-sqs-target",
-        rule=json_files_rule.name,
+        "all-objects-sqs-target",
+        rule=all_objects_rule.name,
         arn=sqs_queue.arn,
         opts=pulumi.ResourceOptions(depends_on=[queue_policy]),
     )
     
-    return {"json_files": json_files_rule}
+    return {"all_objects": all_objects_rule}
 
 
 def create_content_tagger_iam_role(

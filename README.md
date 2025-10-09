@@ -1,13 +1,13 @@
 # Amazon Connect Infrastructure
 
-**Production-ready Amazon Connect infrastructure as code with production ready monitoring, AI-powered assistance, and security best practices built-in.**
+**Production-ready Amazon Connect infrastructure as code with pre-configured integrations, operational and security best practices.**
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Pulumi](https://img.shields.io/badge/Pulumi-3.x-blueviolet)](https://www.pulumi.com/)
 [![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/)
 ![CodeQL](https://github.com/DanBloy/elevai-connect/workflows/CodeQL/badge.svg)
 
-A comprehensive, modular Pulumi project for deploying Amazon Connect contact centers with Python. This project goes beyond basic infrastructure deployment to provide a battle-tested foundation with production-ready monitoring, intelligent alerting, SAML authentication, and additional out of the box features.
+A comprehensive, project for deploying Amazon Connect contact centers with Python. This project goes beyond basic infrastructure deployment to provide a battle-tested foundation with production-ready monitoring, intelligent alerting, SAML authentication, and additional out of the box features.
 
 ## 💡 Why This Project Exists
 

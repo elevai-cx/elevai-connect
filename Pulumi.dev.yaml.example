@@ -130,7 +130,15 @@ config:
   connect:multiPartyConferenceEnabled: True
   connect:contactFlowLogsEnabled: True
   connect:contactLensEnabled: True
-  connect:logRetentionDays: 30                      # CloudWatch log retention (0 = never expire)
+  
+  # --------------------------------------------------------------------------
+  # CLOUDWATCH LOG RETENTION
+  # --------------------------------------------------------------------------
+  # Controls how long CloudWatch logs are retained for all resources
+  # (Lambda functions, Amazon Connect instance, etc.)
+  # Set to 0 for logs that never expire
+  # Common values: 7, 14, 30, 60, 90, 180, 365
+  cloudwatch:logRetentionDays: 30                   # Default: 1 month
   
   # Optional: SAML metadata file path (only if using SAML)
   # connect:samlMetadataFile: "./path/to/saml-metadata.xml"

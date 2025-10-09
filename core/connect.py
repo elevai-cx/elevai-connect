@@ -365,7 +365,7 @@ def configure_log_retention(
     Returns:
         The created CloudWatch log group
     """
-    config = pulumi.Config("connect")
+    config = pulumi.Config("cloudwatch")
     log_retention_days = config.get_int("logRetentionDays")
     
     # Default to 30 days if not specified
