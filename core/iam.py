@@ -115,7 +115,6 @@ def create_lambda_role(tags: Dict[str, str]) -> aws.iam.Role:
                     "Effect": "Allow",
                     "Action": [
                         "connect:DescribeContact",
-                        "qconnect:UpdateSession",
                         "wisdom:UpdateSession"
                     ],
                     "Resource": "*",

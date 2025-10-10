@@ -560,10 +560,6 @@ def create_q_knowledge_tagging_iam_role(
                         "Sid": "QConnectAccess",
                         "Effect": "Allow",
                         "Action": [
-                            "qconnect:GetContent",
-                            "qconnect:SearchContent",
-                            "qconnect:TagResource",
-                            "qconnect:ListContents",
                             "wisdom:GetContent",
                             "wisdom:SearchContent",
                             "wisdom:TagResource",

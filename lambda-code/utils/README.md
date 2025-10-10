@@ -163,8 +163,7 @@ The Lambda function has the following IAM permissions:
   - `connect:StopContactRecording` - Stop call recording
 
 - **Amazon Q in Connect (Wisdom)**:
-  - `wisdom:UpdateSession` - Update Q in Connect session (legacy)
-  - `qconnect:UpdateSession` - Update Q in Connect session (new)
+  - `wisdom:UpdateSession` - Update Q in Connect session
 
 - **DynamoDB**: Read/write access to project tables
 - **S3**: Get/Put object access
