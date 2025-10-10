@@ -12,7 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Amazon Connect instance creation and configuration
 - S3 buckets with intelligent lifecycle policies
 - Lambda functions for custom integrations
-- Comprehensive IAM roles and policies
 - SAML 2.0 authentication support
 - Amazon Q in Connect integration
 - 70+ CloudWatch alarms with multi-tier alerting
