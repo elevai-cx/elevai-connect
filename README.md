@@ -40,7 +40,6 @@ Amazon Connect is a powerful cloud contact center (CCaaS) platform that lives wi
 - 🔧 **Easily extensible** - Two flexible approaches:
   - Custom Pulumi modules in the `/custom` folder
   - Integration via AWS Systems Manager Parameter Store
-- 🌍 **Multi-region support** - Deploy in any Amazon Connect-supported AWS region
 
 ## 👥 Who This Is For
 
