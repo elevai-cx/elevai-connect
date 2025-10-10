@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pulumi stack output:*)",
+      "Bash(aws s3 ls:*)",
+      "Bash(aws wisdom list-contents:*)",
+      "Bash(aws connect list-contact-flows:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

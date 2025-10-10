@@ -1,0 +1,38 @@
+# Claude Code Configuration
+
+## Project Context
+
+This is the elevai-connect Amazon Connect Pulumi infrastructure project. Always read CLAUDE.md for critical safety rules before making any deployments or configuration changes.
+
+## Available Workshops
+
+Users can work through the following workshops located in the `workshops/` directory:
+
+### 1. Amazon Q Knowledge Base Setup
+**Location:** `workshops/q-knowledgebase-set-up/`
+**Description:** Step-by-step guide to set up Amazon Q in Connect with document ingestion, tagging, and Lex bot integration.
+
+**Workshop includes:**
+- Document upload instructions
+- Lex bot creation
+- Contact flow import
+- Testing procedures
+- Sample PDF documents and metadata files
+
+**To start this workshop:** Read `workshops/q-knowledgebase-set-up/README.md`
+
+## Key Files to Reference
+
+- `CLAUDE.md` - **READ THIS FIRST** - Contains critical safety rules
+- `Pulumi.*.yaml` - Stack configuration files
+- `custom/` - Directory for user extensions (safe to modify)
+- `core/` - Core infrastructure (do not modify)
+
+## Important Reminders
+
+⚠️ **CRITICAL:**
+- Always use `pulumi preview` (bash) before deployments
+- Use MCP tool `pulumi_up` for actual deployments
+- Use MCP tool `update_stack_config` for configuration changes
+- NEVER modify files in `core/` directory
+- Add custom code only to `custom/` directory

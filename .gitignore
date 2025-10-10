@@ -53,6 +53,11 @@ dist/
 build/
 *.egg-info/
 
+# MCP Server
+mcp-server/node_modules/
+mcp-server/dist/
+mcp-server/package-lock.json
+
 # Testing
 .pytest_cache/
 .coverage
