@@ -27,7 +27,7 @@ IMPORTANT: For S3-based knowledge bases with automatic sync:
 - DataIntegration: Points to S3 bucket with no scheduleConfig
 - Assistant Integration: Requires SNS topic for event notifications
 - Files uploaded to S3 are automatically ingested into the knowledge base
-- Content Tagging: EventBridge rules trigger SQS queue, which batches events to Lambda
+- Content Tagging: EventBridge rules trigger SQS queue with 30s delay, which batches events to Lambda
 """
 
 from typing import Dict, Any
@@ -52,9 +52,9 @@ def create_qconnect_integration(
     - A Wisdom Assistant (Q domain)
     - A Knowledge Base with S3 as the data source
     - Integration with the Amazon Connect instance
-    - Content tagging Lambda function for automatic tagging
-    - SQS queue with DLQ for reliable event processing
-    - EventBridge rules to trigger SQS on .json file events
+    - Q Knowledge Tagging Lambda function for automatic tagging
+    - SQS queue with DLQ and 30s delay for reliable event processing
+    - EventBridge rules to trigger SQS on supported file type events
     - Automatic upload of tagging configuration to S3
     
     All data is encrypted using the customer-managed KMS key.
@@ -265,11 +265,11 @@ def create_qconnect_integration(
         eventbridge=True,
     )
     
-    # Create SQS queues (DLQ first, then main queue)
-    sqs_queues = create_content_tagger_sqs_queues(kms_key, tags)
+    # Create SQS queues (DLQ first, then main queue with 30s delay)
+    sqs_queues = create_q_knowledge_tagging_sqs_queues(kms_key, tags)
     
-    # Create Content Tagger Lambda
-    content_tagger_role, role_policy_attachments = create_content_tagger_iam_role(
+    # Create Q Knowledge Tagging Lambda
+    q_knowledge_tagging_role, role_policy_attachments = create_q_knowledge_tagging_iam_role(
         knowledge_base_s3_bucket,
         kms_key,
         sqs_queues["main_queue"],
@@ -277,10 +277,10 @@ def create_qconnect_integration(
         tags
     )
     
-    content_tagger = create_lambda_with_requirements(
-        name="content-tagger",
+    q_knowledge_tagging = create_lambda_with_requirements(
+        name="q-knowledge-tagging",
         lambda_dir="./lambda-code/content-tagger",
-        iam_role=content_tagger_role,
+        iam_role=q_knowledge_tagging_role,
         tags=tags,
         memory_size=512,
         timeout=60,
@@ -294,17 +294,17 @@ def create_qconnect_integration(
     
     # Configure Lambda to process SQS messages with 30s batch window
     event_source_mapping = aws.lambda_.EventSourceMapping(
-        "content-tagger-sqs-trigger",
+        "q-knowledge-tagging-sqs-trigger",
         event_source_arn=sqs_queues["main_queue"].arn,
-        function_name=content_tagger.name,
+        function_name=q_knowledge_tagging.name,
         batch_size=10,
         maximum_batching_window_in_seconds=30,
         function_response_types=["ReportBatchItemFailures"],
-        opts=pulumi.ResourceOptions(depends_on=[content_tagger]),
+        opts=pulumi.ResourceOptions(depends_on=[q_knowledge_tagging]),
     )
     
-    # Create EventBridge rules for .json files routing to SQS
-    eventbridge_rules = create_content_tagger_eventbridge_rules(
+    # Create EventBridge rules for supported file types routing to SQS
+    eventbridge_rules = create_q_knowledge_tagging_eventbridge_rules(
         knowledge_base_s3_bucket,
         sqs_queues["main_queue"],
         tags
@@ -317,9 +317,9 @@ def create_qconnect_integration(
     pulumi.export("qconnect_knowledge_base_arn", knowledge_base.knowledge_base_arn)
     pulumi.export("qconnect_kb_bucket", knowledge_base_s3_bucket.id)
     pulumi.export("qconnect_data_integration_arn", data_integration.data_integration_arn)
-    pulumi.export("content_tagger_function_name", content_tagger.name)
-    pulumi.export("content_tagger_sqs_queue_url", sqs_queues["main_queue"].url)
-    pulumi.export("content_tagger_dlq_url", sqs_queues["dlq"].url)
+    pulumi.export("q_knowledge_tagging_function_name", q_knowledge_tagging.name)
+    pulumi.export("q_knowledge_tagging_sqs_queue_url", sqs_queues["main_queue"].url)
+    pulumi.export("q_knowledge_tagging_dlq_url", sqs_queues["dlq"].url)
     pulumi.export("qconnect_tagging_config_s3_uri", 
         pulumi.Output.concat("s3://", knowledge_base_s3_bucket.id, "/config/content-tagging/s3.json")
     )
@@ -330,7 +330,7 @@ def create_qconnect_integration(
         "assistant_association": assistant_association,
         "assistant_integration": assistant_integration,
         "kb_integration": kb_integration,
-        "content_tagger": content_tagger,
+        "q_knowledge_tagging": q_knowledge_tagging,
         "sqs_queue": sqs_queues["main_queue"],
         "dlq": sqs_queues["dlq"],
         "event_source_mapping": event_source_mapping,
@@ -339,14 +339,15 @@ def create_qconnect_integration(
     }
 
 
-def create_content_tagger_sqs_queues(
+def create_q_knowledge_tagging_sqs_queues(
     kms_key: aws.kms.Key,
     tags: Dict[str, str]
 ) -> Dict[str, aws.sqs.Queue]:
     """
-    Create SQS queues for content tagger Lambda.
+    Create SQS queues for Q Knowledge Tagging Lambda.
     
-    Creates a main queue and a DLQ with 14-day retention.
+    Creates a main queue with 30s delay and a DLQ with 14-day retention.
+    The delay prevents race conditions between file uploads and .meta.json uploads.
     
     Args:
         kms_key: KMS key for encryption
@@ -358,18 +359,19 @@ def create_content_tagger_sqs_queues(
     
     # Create DLQ first (14 days retention)
     dlq = aws.sqs.Queue(
-        "content-tagger-dlq",
-        name="content-tagger-dlq",
+        "q-knowledge-tagging-dlq",
+        name="q-knowledge-tagging-dlq",
         message_retention_seconds=14 * 24 * 60 * 60,  # 14 days
         kms_master_key_id=kms_key.id,
         kms_data_key_reuse_period_seconds=300,
-        tags={**tags, "Name": "content-tagger-dlq"},
+        tags={**tags, "Name": "q-knowledge-tagging-dlq"},
     )
     
-    # Create main queue with DLQ configured
+    # Create main queue with DLQ configured and 30s delay
     main_queue = aws.sqs.Queue(
-        "content-tagger-queue",
-        name="content-tagger-queue",
+        "q-knowledge-tagging-queue",
+        name="q-knowledge-tagging-queue",
+        delay_seconds=30,  # 30 second delay to prevent race conditions
         visibility_timeout_seconds=360,  # 6x Lambda timeout (60s)
         message_retention_seconds=4 * 24 * 60 * 60,  # 4 days
         kms_master_key_id=kms_key.id,
@@ -380,7 +382,7 @@ def create_content_tagger_sqs_queues(
                 "maxReceiveCount": 3
             })
         ),
-        tags={**tags, "Name": "content-tagger-queue"},
+        tags={**tags, "Name": "q-knowledge-tagging-queue"},
     )
     
     return {
@@ -389,18 +391,29 @@ def create_content_tagger_sqs_queues(
     }
 
 
-def create_content_tagger_eventbridge_rules(
+def create_q_knowledge_tagging_eventbridge_rules(
     bucket: aws.s3.Bucket,
     sqs_queue: aws.sqs.Queue,
     tags: Dict[str, str]
 ) -> Dict[str, aws.cloudwatch.EventRule]:
     """
-    Create EventBridge rule to trigger SQS queue for all Object Created events.
+    Create EventBridge rules to trigger SQS queue for supported Amazon Q file types.
     
-    Triggers on:
-    - Meta files (.meta.json) - tagged based on meta file content
-    - Document files (all other files) - tagged based on folder rules
-    - Config files (config/content-tagging/*.json) - logged but not retagged
+    Triggers on Object Created events for:
+    - HTML files (.html)
+    - Word documents (.docx)
+    - PDF files (.pdf)
+    - Plain text files (.txt)
+    
+    NOTE: .meta.json files do NOT trigger the Lambda. Instead, the Lambda checks for
+    .meta.json files when processing the document. The 30-second SQS delay ensures
+    both the document and .meta.json (if uploaded together) are available.
+    
+    Per Amazon Q in Connect documentation:
+    - HTML, Word (DOCX), PDF, and text files up to 1 MB
+    - Plain text files must be UTF-8
+    - Word documents must be in DOCX format
+    - PDF files cannot be encrypted or password protected
     
     Args:
         bucket: S3 bucket
@@ -410,10 +423,14 @@ def create_content_tagger_eventbridge_rules(
     Returns:
         Dictionary of EventBridge rules
     """
-    # Match ALL Object Created events (including all file types)
-    all_objects_rule = aws.cloudwatch.EventRule(
-        "amazon-q-document-created",
-        description="Trigger SQS for all Object Created events with the Amazon Q bucket",
+    
+    # Document file extensions only (not .meta.json)
+    supported_extensions = [".html", ".docx", ".pdf", ".txt"]
+    
+    # Create a single rule matching any supported file type
+    supported_files_rule = aws.cloudwatch.EventRule(
+        "q-knowledge-supported-files",
+        description="Trigger SQS for Amazon Q document file types only (.html, .docx, .pdf, .txt)",
         event_pattern=bucket.id.apply(
             lambda bucket_name: pulumi.Output.json_dumps({
                 "source": ["aws.s3"],
@@ -421,20 +438,25 @@ def create_content_tagger_eventbridge_rules(
                 "detail": {
                     "bucket": {
                         "name": [bucket_name]
+                    },
+                    "object": {
+                        "key": [
+                            {"suffix": ext} for ext in supported_extensions
+                        ]
                     }
                 }
             })
         ),
-        tags={**tags, "Name": "amazon-q-document-created"},
+        tags={**tags, "Name": "q-knowledge-supported-files"},
     )
     
     # Allow EventBridge to send messages to SQS - must be created before EventTarget
     queue_policy = aws.sqs.QueuePolicy(
-        "content-tagger-queue-policy",
+        "q-knowledge-tagging-queue-policy",
         queue_url=sqs_queue.url,
         policy=pulumi.Output.all(
             sqs_queue.arn,
-            all_objects_rule.arn
+            supported_files_rule.arn
         ).apply(
             lambda args: pulumi.Output.json_dumps({
                 "Version": "2012-10-17",
@@ -460,16 +482,16 @@ def create_content_tagger_eventbridge_rules(
     
     # Target SQS queue - depends on queue policy being in place
     aws.cloudwatch.EventTarget(
-        "all-objects-sqs-target",
-        rule=all_objects_rule.name,
+        "supported-files-sqs-target",
+        rule=supported_files_rule.name,
         arn=sqs_queue.arn,
         opts=pulumi.ResourceOptions(depends_on=[queue_policy]),
     )
     
-    return {"all_objects": all_objects_rule}
+    return {"supported_files": supported_files_rule}
 
 
-def create_content_tagger_iam_role(
+def create_q_knowledge_tagging_iam_role(
     knowledge_base_bucket: aws.s3.Bucket,
     kms_key: aws.kms.Key,
     sqs_queue: aws.sqs.Queue,
@@ -477,7 +499,7 @@ def create_content_tagger_iam_role(
     tags: Dict[str, str]
 ) -> tuple[aws.iam.Role, list]:
     """
-    Create IAM role for content tagger Lambda with necessary permissions.
+    Create IAM role for Q Knowledge Tagging Lambda with necessary permissions.
     
     Args:
         knowledge_base_bucket: Knowledge base S3 bucket
@@ -491,7 +513,7 @@ def create_content_tagger_iam_role(
     """
     
     role = aws.iam.Role(
-        "content-tagger-role",
+        "q-knowledge-tagging-role",
         assume_role_policy="""{
             "Version": "2012-10-17",
             "Statement": [{
@@ -502,29 +524,29 @@ def create_content_tagger_iam_role(
                 }
             }]
         }""",
-        tags={**tags, "Name": "content-tagger-role"},
+        tags={**tags, "Name": "q-knowledge-tagging-role"},
     )
     
     # Store policy attachments to ensure they're applied before Lambda creation
     policy_attachments = []
     
     basic_exec = aws.iam.RolePolicyAttachment(
-        "content-tagger-basic-execution",
+        "q-knowledge-tagging-basic-execution",
         role=role.name,
         policy_arn="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
     )
     policy_attachments.append(basic_exec)
     
     xray = aws.iam.RolePolicyAttachment(
-        "content-tagger-xray",
+        "q-knowledge-tagging-xray",
         role=role.name,
         policy_arn="arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess",
     )
     policy_attachments.append(xray)
     
     policy = aws.iam.Policy(
-        "content-tagger-policy",
-        description="Policy for Content Tagger Lambda function",
+        "q-knowledge-tagging-policy",
+        description="Policy for Q Knowledge Tagging Lambda function",
         policy=pulumi.Output.all(
             knowledge_base_bucket.arn,
             kms_key.arn,
@@ -590,7 +612,7 @@ def create_content_tagger_iam_role(
     )
     
     custom_policy = aws.iam.RolePolicyAttachment(
-        "content-tagger-custom-policy",
+        "q-knowledge-tagging-custom-policy",
         role=role.name,
         policy_arn=policy.arn,
     )

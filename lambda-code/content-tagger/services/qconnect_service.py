@@ -37,113 +37,100 @@ class QConnectService:
         """
         self.client = boto3.client('qconnect')
         self.knowledge_base_id = knowledge_base_id
+        self._content_cache = None  # Cache for list_contents results
+        self._cache_built = False
         logger.debug(f"Initialized QConnectService for KB: {knowledge_base_id}")
     
-    def get_content_by_name(self, object_key: str) -> Optional[Dict]:
+    def _build_content_cache(self) -> Dict[str, Dict]:
         """
-        Find content in knowledge base by object key (name).
+        Build a cache of all content indexed by S3 object key.
         
-        Searches both by NAME field and S3 object key in metadata.
+        This cache is built once per Lambda invocation and reused for all files
+        in the batch, avoiding repeated API calls.
         
-        Args:
-            object_key: S3 object key to search for
-            
         Returns:
-            Content data if found, None otherwise
+            Dictionary mapping S3 object keys to content summaries
         """
-        try:
-            logger.debug(f"Searching for content with object key: {object_key}")
-            
-            # First try searching by NAME
-            response = self.client.search_content(
-                knowledgeBaseId=self.knowledge_base_id,
-                searchExpression={
-                    'filters': [{
-                        'field': 'NAME',
-                        'operator': 'EQUALS',
-                        'value': object_key
-                    }]
-                }
-            )
-            
-            summaries = response.get('contentSummaries', [])
-            
-            if summaries:
-                content_id = summaries[0]['contentId']
-                logger.info(f"Found content by NAME: {content_id} for object: {object_key}")
-                return self.get_content_details(content_id)
-            
-            # If not found by NAME, search all content and match by S3 object key in metadata
-            logger.debug(f"Content not found by NAME, searching by S3 object key metadata")
-            return self.find_content_by_s3_key(object_key)
-            
-        except Exception as e:
-            logger.error(f"Error searching for content: {str(e)}", exc_info=True)
-            raise
-    
-    def find_content_by_s3_key(self, s3_key: str) -> Optional[Dict]:
-        """
-        Find content by S3 object key stored in metadata.
+        if self._cache_built:
+            return self._content_cache
         
-        Args:
-            s3_key: S3 object key (e.g., 'sample.pdf')
-            
-        Returns:
-            Content data if found, None otherwise
-        """
-        try:
-            logger.debug(f"Searching all content for S3 key: {s3_key}")
-            
-            # List all content and find by metadata
+        logger.debug("Building content cache from list_contents")
+        cache = {}
+        
+        response = self.client.list_contents(
+            knowledgeBaseId=self.knowledge_base_id,
+            maxResults=100
+        )
+        
+        # Add all content to cache
+        for summary in response.get('contentSummaries', []):
+            metadata = summary.get('metadata', {})
+            s3_key = metadata.get('s3.object.key')
+            if s3_key:
+                cache[s3_key] = summary
+        
+        # Handle pagination
+        next_token = response.get('nextToken')
+        page_count = 1
+        while next_token:
+            page_count += 1
+            logger.debug(f"Fetching content page {page_count}")
             response = self.client.list_contents(
-                knowledgeBaseId=self.knowledge_base_id
+                knowledgeBaseId=self.knowledge_base_id,
+                maxResults=100,
+                nextToken=next_token
             )
             
             for summary in response.get('contentSummaries', []):
-                # Check if S3 object key matches in metadata
                 metadata = summary.get('metadata', {})
-                if metadata.get('s3.object.key') == s3_key:
-                    content_id = summary['contentId']
-                    logger.info(f"Found content by S3 key: {content_id} for object: {s3_key}")
-                    return self.get_content_details(content_id)
+                s3_key = metadata.get('s3.object.key')
+                if s3_key:
+                    cache[s3_key] = summary
             
-            logger.debug(f"No content found for S3 key: {s3_key}")
+            next_token = response.get('nextToken')
+        
+        logger.info(f"Built content cache with {len(cache)} items from {page_count} page(s)")
+        self._content_cache = cache
+        self._cache_built = True
+        return cache
+    
+    def get_content_by_name(self, object_key: str) -> Optional[Dict]:
+        """
+        Find content in knowledge base by S3 object key.
+        
+        Amazon Q Connect stores the S3 object key in metadata['s3.object.key'].
+        This function uses a cache to avoid repeated API calls when processing batches.
+        
+        Args:
+            object_key: Full S3 object key (e.g., 'sales/emea/file.pdf')
+            
+        Returns:
+            Content data if found, None otherwise
+        """
+        try:
+            logger.debug(f"Searching for content with S3 object key: {object_key}")
+            
+            # Build/get cache of all content
+            cache = self._build_content_cache()
+            
+            # Look up by S3 key
+            summary = cache.get(object_key)
+            
+            if summary:
+                logger.info(f"Found content by S3 key: {summary['contentId']} for object: {object_key}")
+                return {
+                    'contentId': summary['contentId'],
+                    'contentArn': summary['contentArn'],
+                    'name': summary['name'],
+                    'title': summary.get('title', ''),
+                    'status': summary['status']
+                }
+            
+            logger.warning(f"No content found for S3 key: {object_key}")
             return None
             
         except Exception as e:
-            logger.error(f"Error searching by S3 key: {str(e)}", exc_info=True)
-            raise
-    
-    def get_content_details(self, content_id: str) -> Dict:
-        """
-        Get detailed information about content.
-        
-        Args:
-            content_id: Content ID
-            
-        Returns:
-            Content details including ARN
-        """
-        try:
-            logger.debug(f"Getting content details for: {content_id}")
-            
-            response = self.client.get_content(
-                knowledgeBaseId=self.knowledge_base_id,
-                contentId=content_id
-            )
-            
-            content = response['content']
-            logger.debug(f"Retrieved content ARN: {content['contentArn']}")
-            
-            return {
-                'contentId': content['contentId'],
-                'contentArn': content['contentArn'],
-                'name': content['name'],
-                'status': content['status']
-            }
-            
-        except Exception as e:
-            logger.error(f"Error getting content details: {str(e)}", exc_info=True)
+            logger.error(f"Error searching for content: {str(e)}", exc_info=True)
             raise
     
     def tag_content(self, content_arn: str, tags: Dict[str, str]) -> None:

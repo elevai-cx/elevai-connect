@@ -114,8 +114,9 @@ def create_lambda_role(tags: Dict[str, str]) -> aws.iam.Role:
                     "Sid": "QConnectSessionManagement",
                     "Effect": "Allow",
                     "Action": [
-                        "wisdom:UpdateSession",
+                        "connect:DescribeContact",
                         "qconnect:UpdateSession",
+                        "wisdom:UpdateSession"
                     ],
                     "Resource": "*",
                 },

@@ -13,20 +13,34 @@
 # limitations under the License.
 
 """
-Content Tagger Lambda Function
+Q Knowledge Tagging Lambda Function
 
-Automatically tags Amazon Q Connect content when files are created or updated in S3.
+Automatically tags Amazon Q Connect content when supported files are created or updated in S3.
+
+SUPPORTED FILE TYPES (per Amazon Q Connect):
+- HTML files (.html)
+- Word documents (.docx) - DOCX format only
+- PDF files (.pdf) - non-encrypted, non-password protected
+- Plain text files (.txt) - UTF-8 encoding
 
 TAGGING LOGIC:
-1. Meta files (.meta.json): Apply tags from the meta file to the associated document
-2. Document files: Apply folder-based tags from s3.json (meta file tags override if present)
-3. Config files (s3.json): Log update but don't retag existing content automatically
+1. Document files: Apply folder-based tags from s3.json (meta file tags override if present)
+2. Config files (s3.json): Log update but don't retag existing content automatically
 
 WORKFLOW:
-- EventBridge captures ALL Object Created events in the knowledge base S3 bucket
+- EventBridge captures Object Created events ONLY for document files (.html, .docx, .pdf, .txt)
+- Events are sent to SQS with a 30-second delay (allows both file and .meta.json to be uploaded)
 - Events are batched via SQS (30-second window, up to 10 messages)
 - Lambda processes batch with partial failure support (batchItemFailures)
-- Documents are tagged in Q Connect knowledge base based on their location and meta files
+- Lambda checks for optional .meta.json file when processing each document
+- Documents are tagged in Q Connect knowledge base based on folder rules + meta file (if exists)
+
+META FILES (.meta.json):
+- Optional files that define explicit tags for a document
+- NOT monitored by EventBridge (don't trigger Lambda)
+- Lambda automatically checks for .meta.json when processing the associated document
+- Must be uploaded before or within 30 seconds of the document to be applied
+- Meta file tags override folder-based tags
 
 CONFIG UPDATES:
 When s3.json is updated, NEW rules apply to future uploads/updates only.
@@ -42,17 +56,17 @@ from services import QConnectService, S3Service, TaggingService
 
 # Initialize PowerTools with sensible defaults
 logger = Logger(
-    service=os.getenv('POWERTOOLS_SERVICE_NAME', 'content-tagger'),
+    service=os.getenv('POWERTOOLS_SERVICE_NAME', 'q-knowledge-tagging'),
     level=os.getenv('LOG_LEVEL', 'INFO')
 )
 
 tracer = Tracer(
-    service=os.getenv('POWERTOOLS_SERVICE_NAME', 'content-tagger')
+    service=os.getenv('POWERTOOLS_SERVICE_NAME', 'q-knowledge-tagging')
 )
 
 metrics = Metrics(
     namespace=os.getenv('POWERTOOLS_METRICS_NAMESPACE', 'AmazonConnect'),
-    service=os.getenv('POWERTOOLS_SERVICE_NAME', 'content-tagger')
+    service=os.getenv('POWERTOOLS_SERVICE_NAME', 'q-knowledge-tagging')
 )
 
 # Environment variables
@@ -72,7 +86,7 @@ def handler(event, context):
     partial batch failures.
     """
     
-    logger.info("=== CONTENT TAGGER INVOCATION ===")
+    logger.info("=== Q KNOWLEDGE TAGGING INVOCATION ===")
     logger.info("SQS batch received", extra={
         "record_count": len(event.get('Records', [])),
         "function_name": context.function_name,
@@ -82,7 +96,7 @@ def handler(event, context):
     })
     
     # Add invocation metric
-    metrics.add_metric(name="ContentTaggerInvocation", unit=MetricUnit.Count, value=1)
+    metrics.add_metric(name="QKnowledgeTaggingInvocation", unit=MetricUnit.Count, value=1)
     metrics.add_metric(name="SQSRecordsReceived", unit=MetricUnit.Count, value=len(event.get('Records', [])))
     
     try:
@@ -263,8 +277,12 @@ def process_s3_event(
         if is_config_file(object_key):
             return handle_config_update(object_key)
         
-        # Check if this is a meta file update
+        # Check if this is a meta file update (should not happen with current EventBridge config)
         if is_meta_file(object_key):
+            logger.warning(
+                f"Meta file triggered Lambda: {object_key}. "
+                "This should not happen with current EventBridge configuration."
+            )
             return handle_meta_file_update(
                 bucket,
                 object_key,
@@ -342,6 +360,13 @@ def handle_meta_file_update(
     """
     Handle .meta.json file update.
     
+    NOTE: With the current EventBridge configuration, .meta.json files do NOT trigger
+    this Lambda function. This function is kept for backwards compatibility or manual
+    invocations, but under normal operation it will not be called.
+    
+    Instead, .meta.json files are automatically read by handle_content_file() when
+    processing the associated document file.
+    
     When a meta file is updated, find and retag the associated content file.
     
     Args:
@@ -369,8 +394,8 @@ def handle_meta_file_update(
     base_key = meta_key[:-10]  # Remove '.meta.json'
     logger.debug(f"Base key: {base_key}")
     
-    # Try common file extensions to find the content file
-    content_extensions = ['.pdf', '.docx', '.doc', '.txt', '.html', '.md']
+    # Try supported file extensions to find the content file
+    content_extensions = ['.pdf', '.docx', '.txt', '.html']
     content = None
     content_key = None
     
