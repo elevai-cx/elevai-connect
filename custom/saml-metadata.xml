@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+SAML Metadata Template for Amazon Connect
+
+Replace this entire file with your Identity Provider's (IdP) metadata.
+
+To get your IdP metadata:
+- Okta: Admin Console > Applications > Your App > Sign On > View Setup Instructions > Download Metadata
+- Azure AD: Enterprise Applications > Your App > Single sign-on > Federation Metadata XML
+- Google Workspace: Admin Console > Apps > Web and mobile apps > Your App > Download Metadata
+
+Once you have your metadata:
+1. Replace the contents of this file with your IdP's metadata XML
+2. Update your Pulumi config to point to this file:
+   
+   In Pulumi.dev.yaml:
+   connect:samlMetadataFile: "./custom/saml-metadata.xml"
+
+3. Run: pulumi up
+
+The SAML provider will be created with your real metadata during deployment!
+
+If you don't have your metadata yet, you can:
+- Leave this commented and deploy with placeholder metadata
+- Update the SAML provider later via AWS Console or the update-saml-metadata.sh script
+-->
+
+<!-- Example structure - REPLACE WITH YOUR IDP METADATA -->
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://your-idp.example.com">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="signing">
+      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+        <ds:X509Data>
+          <ds:X509Certificate>
+            <!-- Your IdP's certificate will be here -->
+          </ds:X509Certificate>
+        </ds:X509Data>
+      </ds:KeyInfo>
+    </KeyDescriptor>
+    <NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</NameIDFormat>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" 
+                         Location="https://your-idp.example.com/sso/saml"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>

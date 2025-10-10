@@ -1,0 +1,215 @@
+# ============================================================================
+# PULUMI AMAZON CONNECT INFRASTRUCTURE - EXAMPLE CONFIGURATION
+# ============================================================================
+# Copy this file to Pulumi.dev.yaml (or Pulumi.prod.yaml, etc.) and 
+# customize with your environment-specific values
+#
+# Quick Start:
+#   cp Pulumi.dev.yaml.example Pulumi.dev.yaml
+#   # Then edit Pulumi.dev.yaml with your settings
+# ============================================================================
+
+config:
+  # --------------------------------------------------------------------------
+  # ENVIRONMENT & AWS CONFIGURATION
+  # --------------------------------------------------------------------------
+  environment:type: dev                    # dev, staging, prod, etc.
+  aws:region: us-east-1                    # Your AWS region
+  aws-native:region: us-east-1
+
+  # --------------------------------------------------------------------------
+  # ALERTING & NOTIFICATIONS
+  # --------------------------------------------------------------------------
+  alerting:enabled: True
+  alerting:info_warning_email: "your-email@example.com"
+  alerting:error_email: "your-email@example.com"
+
+  # --------------------------------------------------------------------------
+  # AWS BILLING ALERTS
+  # --------------------------------------------------------------------------
+  billing:enabled: True
+  billing:monthlyBudgetLimit: "50"
+  billing:alertThresholds: [50, 80, 100]
+  billing:notificationEmail: "your-email@example.com"
+
+  # --------------------------------------------------------------------------
+  # CLOUDWATCH ALARM THRESHOLDS
+  # --------------------------------------------------------------------------
+  alarms:lambda:
+    errors:
+      threshold: 5
+      period: 300
+      evaluationPeriods: 2
+    throttles:
+      threshold: 10
+      period: 300
+      evaluationPeriods: 1
+    duration:
+      threshold: 25000
+      period: 300
+      evaluationPeriods: 2
+    concurrentExecutions:
+      threshold: 100
+      period: 60
+      evaluationPeriods: 2
+
+  alarms:dynamodb:
+    readThrottles:
+      threshold: 10
+      period: 300
+      evaluationPeriods: 2
+    writeThrottles:
+      threshold: 10
+      period: 300
+      evaluationPeriods: 2
+    userErrors:
+      threshold: 20
+      period: 300
+      evaluationPeriods: 1
+    consumedReadCapacity:
+      threshold: 8000
+      period: 300
+      evaluationPeriods: 2
+
+  alarms:connect:
+    concurrentPercentageWarning: 70
+    concurrentPercentageCritical: 85
+    concurrentPeriod: 60
+    concurrentEvaluationPeriodsWarning: 3
+    concurrentEvaluationPeriodsCritical: 2
+    missedCalls:
+      threshold: 5
+      period: 300
+      evaluationPeriods: 1
+    throttledCalls:
+      threshold: 1
+      period: 300
+      evaluationPeriods: 1
+    contactFlowErrors:
+      threshold: 5
+      period: 300
+      evaluationPeriods: 2
+    callRecordingUploadError:
+      threshold: 1
+      period: 300
+      evaluationPeriods: 1
+    contactFlowFatalErrors:
+      threshold: 1
+      period: 300
+      evaluationPeriods: 1
+    misconfiguredPhoneNumbers:
+      threshold: 1
+      period: 300
+      evaluationPeriods: 1
+    queueCapacityExceededError:
+      threshold: 1
+      period: 300
+      evaluationPeriods: 2
+    toInstancePacketLossRate:
+      threshold: 20
+      period: 60
+      evaluationPeriods: 2
+
+  alarms:sqs:
+    dlqMessages:
+      threshold: 1
+      period: 300
+      evaluationPeriods: 1
+    dlqMessageAge:
+      threshold: 3600
+      period: 300
+      evaluationPeriods: 2
+
+  # --------------------------------------------------------------------------
+  # AMAZON CONNECT INSTANCE
+  # --------------------------------------------------------------------------
+  # ⚠️  WARNING: instanceAlias and identityManagementType CANNOT be changed once created!
+  
+  connect:instanceAlias: your-unique-alias          # MUST BE UNIQUE globally
+  connect:identityManagementType: SAML              # SAML or CONNECT_MANAGED
+  connect:multiPartyConferenceEnabled: True
+  connect:contactFlowLogsEnabled: True
+  connect:contactLensEnabled: True
+  
+  # --------------------------------------------------------------------------
+  # CLOUDWATCH LOG RETENTION
+  # --------------------------------------------------------------------------
+  # Controls how long CloudWatch logs are retained for all resources
+  # (Lambda functions, Amazon Connect instance, etc.)
+  # Set to 0 for logs that never expire
+  # Common values: 7, 14, 30, 60, 90, 180, 365
+  cloudwatch:logRetentionDays: 30                   # Default: 1 month
+  
+  # Optional: SAML metadata file path (only if using SAML)
+  # connect:samlMetadataFile: "./path/to/saml-metadata.xml"
+  
+  # --------------------------------------------------------------------------
+  # APPROVED ORIGINS (CCP Embedding)
+  # --------------------------------------------------------------------------
+  # URLs that are allowed to embed the Amazon Connect Contact Control Panel (CCP).
+  # This is required when integrating the CCP widget into your web applications.
+  # 
+  # Requirements:
+  # - Production URLs MUST use https:// protocol
+  # - Local development can use http://localhost:PORT or http://127.0.0.1:PORT
+  # - Include the full domain (e.g., https://app.example.com, not app.example.com)
+  # - Add each application/environment that needs CCP access
+  # 
+  # Example: If your agents use the CCP from https://crm.yourcompany.com,
+  # add that URL to the list below.
+  # 
+  # Leave empty or comment out if you don't need to embed the CCP.
+  connect:approvedOrigins:
+    - "http://localhost:3000"            # Local development (React default)
+    - "https://your-app.example.com"    # Production
+    # Add more origins as needed for different environments/applications
+
+  # --------------------------------------------------------------------------
+  # S3 LIFECYCLE POLICIES
+  # --------------------------------------------------------------------------
+  s3:archiveDays: "90"
+  s3:deletionDays: "365"
+  
+  s3:contactRecords.archiveDays: "90"
+  s3:contactRecords.deletionDays: "365"
+  s3:recordings.archiveDays: "90"
+  s3:recordings.deletionDays: "2555"              # 7 years for compliance
+  s3:chatTranscripts.archiveDays: "90"
+  s3:chatTranscripts.deletionDays: "365"
+  s3:exportedReports.archiveDays: "30"
+  s3:exportedReports.deletionDays: "180"
+  s3:attachments.archiveDays: "90"
+  s3:attachments.deletionDays: "365"
+  s3:screenRecordings.archiveDays: "90"
+  s3:screenRecordings.deletionDays: "365"
+  s3:contactEvaluations.archiveDays: "90"
+  s3:contactEvaluations.deletionDays: "1095"
+  s3:emailMessages.archiveDays: "90"
+  s3:emailMessages.deletionDays: "365"
+
+  # --------------------------------------------------------------------------
+  # AMAZON Q IN CONNECT (QConnect)
+  # --------------------------------------------------------------------------
+  qconnect:enabled: True
+  qconnect:assistantName: q-assistant
+  qconnect:knowledgeBaseName: q-knowledgebase
+  
+  qconnect:contentTagging:
+    - folderName: sales/emea
+      tags:
+        Department: Sales
+        Region: EMEA
+        Stage: Dev
+    - folderName: sales/americas
+      tags:
+        Department: Sales
+        Region: Americas
+    - folderName: support
+      tags:
+        Department: Support
+        ContentType: Guide
+    - folderName: policies
+      tags:
+        Department: Compliance
+        ContentType: Policy
+        Compliance: Required

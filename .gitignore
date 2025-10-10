@@ -1,0 +1,66 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Pulumi
+*.pulumi/
+Pulumi.*.yaml
+!Pulumi.yaml
+*.pyc
+
+# SAML metadata - keep template but exclude actual metadata files
+# The template (saml-metadata.xml) is tracked, but any real metadata should not be
+custom/*-metadata.xml
+!custom/saml-metadata.xml
+custom/my-saml-metadata.xml
+custom/production-saml-metadata.xml
+
+# Lambda build artifacts
+.pulumi/lambda-builds/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Terraform (legacy, keeping for reference)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
