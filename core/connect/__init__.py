@@ -23,6 +23,7 @@ from .validation import validate_instance_alias
 from .s3 import create_s3_buckets
 from .iam import create_iam_resources
 from .athena import configure_athena_workgroup, create_athena_named_queries
+from .customer_profiles import create_customer_profiles_integration
 
 __all__ = [
     'create_connect_instance',
@@ -31,4 +32,5 @@ __all__ = [
     'create_iam_resources',
     'configure_athena_workgroup',
     'create_athena_named_queries',
+    'create_customer_profiles_integration',
 ]

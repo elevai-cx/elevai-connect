@@ -7,6 +7,7 @@ Welcome to the Amazon Connect Infrastructure documentation! This directory conta
 ### Getting Started
 
 - **[Main README](../README.md)** - Project overview, quick start, and configuration
+- **[POST_DEPLOYMENT_STEPS.md](POST_DEPLOYMENT_STEPS.md)** - Consolidated checklist of all manual configuration steps
 - **[CLAUDE_CODE_SETUP.md](CLAUDE_CODE_SETUP.md)** - Deploy using AI with Claude Code and MCP
 
 ### Core Features
@@ -61,6 +62,9 @@ Welcome to the Amazon Connect Infrastructure documentation! This directory conta
   - Pull request guidelines
 
 ## 🎯 Quick Links by Use Case
+
+### "I just deployed - what manual steps do I need to complete?"
+→ [POST_DEPLOYMENT_STEPS.md](POST_DEPLOYMENT_STEPS.md)
 
 ### "I want to enable SSO login"
 → [SAML_SETUP_GUIDE.md](SAML_SETUP_GUIDE.md)

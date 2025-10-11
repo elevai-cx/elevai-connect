@@ -244,6 +244,46 @@ def create_parameter_store_items(
             tags
         )
     
+    # Customer Profiles Parameters (if enabled)
+    customer_profiles = core_resources.get("customer_profiles")
+    if customer_profiles:
+        domain = customer_profiles.get("domain")
+        if domain:
+            parameters["customer_profiles_domain_name"] = _create_parameter(
+                "customer-profiles-domain-name",
+                f"{prefix}/customer-profiles/domain/name",
+                domain.domain_name,
+                "Customer Profiles domain name",
+                tags
+            )
+            
+            parameters["customer_profiles_domain_arn"] = _create_parameter(
+                "customer-profiles-domain-arn",
+                f"{prefix}/customer-profiles/domain/arn",
+                domain.arn,
+                "Customer Profiles domain ARN",
+                tags
+            )
+        
+        # Error queue parameters (if enabled)
+        error_queue = customer_profiles.get("error_queue")
+        if error_queue:
+            parameters["customer_profiles_error_queue_name"] = _create_parameter(
+                "customer-profiles-error-queue-name",
+                f"{prefix}/customer-profiles/error-queue/name",
+                error_queue.name,
+                "Customer Profiles error reporting queue name",
+                tags
+            )
+            
+            parameters["customer_profiles_error_queue_arn"] = _create_parameter(
+                "customer-profiles-error-queue-arn",
+                f"{prefix}/customer-profiles/error-queue/arn",
+                error_queue.arn,
+                "Customer Profiles error reporting queue ARN",
+                tags
+            )
+    
     pulumi.log.info(f"Created {len(parameters)} Parameter Store items with prefix: {prefix}")
     
     return parameters
@@ -301,4 +341,4 @@ def export_parameter_store_info(parameters: Dict[str, aws.ssm.Parameter]) -> Non
     
     # Export a list of all parameter names
     parameter_names = [param.name for param in parameters.values()]
-    pulumi.export("parameter_store_names", parameter_names)
+    # pulumi.export("parameter_store_names", parameter_names)

@@ -22,7 +22,12 @@ These are designed to be updated from the upstream repository without conflicts.
 from typing import Dict, Any
 import pulumi
 
-from .connect import create_connect_instance, create_s3_buckets, create_iam_resources
+from .connect import (
+    create_connect_instance, 
+    create_s3_buckets, 
+    create_iam_resources,
+    create_customer_profiles_integration
+)
 from .lambda_functions import create_lambda_functions
 from .qconnect import create_qconnect_integration, create_qconnect_knowledge_bucket
 from .kms import create_connect_data_key
@@ -36,6 +41,7 @@ from .alerting import (
     create_billing_alarms
 )
 from .parameter_store import create_parameter_store_items, export_parameter_store_info
+from .post_deployment_tracker import print_manual_steps_summary
 
 
 def create_core_infrastructure(tags: Dict[str, str]) -> Dict[str, Any]:
@@ -100,6 +106,17 @@ def create_core_infrastructure(tags: Dict[str, str]) -> Dict[str, Any]:
         )
         resources["qconnect"] = qconnect_resources
     
+    # Create Customer Profiles integration (optional)
+    customer_profiles_config = pulumi.Config("customer-profiles")
+    if customer_profiles_config.get_bool("enabled") or False:
+        customer_profiles_resources = create_customer_profiles_integration(
+            connect_instance=connect_instance,
+            kms_key=kms_key,
+            tags=tags
+        )
+        if customer_profiles_resources:
+            resources["customer_profiles"] = customer_profiles_resources
+    
     # Create CloudWatch alarms for all resources
     # Check if alerting is enabled (default: true)
     alerting_config = pulumi.Config("alerting")
@@ -126,6 +143,9 @@ def create_core_infrastructure(tags: Dict[str, str]) -> Dict[str, Any]:
     
     # Export parameter store information
     export_parameter_store_info(parameter_store_items)
+    
+    # Print consolidated manual steps summary at the end
+    print_manual_steps_summary()
     
     return resources
 

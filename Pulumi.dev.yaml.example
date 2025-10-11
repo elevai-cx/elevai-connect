@@ -223,3 +223,46 @@ config:
         Department: Compliance
         ContentType: Policy
         Compliance: Required
+
+  # --------------------------------------------------------------------------
+  # CUSTOMER PROFILES
+  # --------------------------------------------------------------------------
+  # Amazon Connect Customer Profiles creates unified customer profiles by
+  # combining data from multiple applications and contact channels.
+  # 
+  # When enabled, this creates:
+  # - Customer Profiles domain (connect-profiles-domain)
+  # - Optional SQS error reporting queue
+  # - Integration with Amazon Connect instance
+  # - Parameter Store entries for external integration
+  #
+  # Cost: ~$50-200/month depending on call volume
+  # --------------------------------------------------------------------------
+  
+  customer-profiles:enabled: True                 # Set to True to enable
+  
+  # Auto-association type controls how profiles are created and linked to contacts
+  # Options:
+  #   CREATE_LIMITED_PROFILES_AND_AUTO_ASSOCIATE - (Recommended/Default)
+  #     Automatically creates limited profiles from Contact Trace Records (CTRs)
+  #     and associates contacts with profiles. Best for most use cases.
+  #   
+  #   AUTO_ASSOCIATE_PROFILES_ONLY - 
+  #     Only associates contacts with existing profiles, doesn't create new ones.
+  #     Use when profiles are created from other sources (CRM, data warehouse).
+  #   
+  #   CREATE_INFERRED_PROFILES_ONLY - 
+  #     Creates inferred profiles without auto-association.
+  #     For advanced analytics and ML use cases.
+  customer-profiles:auto-association-type: "CREATE_LIMITED_PROFILES_AND_AUTO_ASSOCIATE"
+  
+  # Enable SQS error reporting queue (Recommended for production)
+  # When enabled, creates an encrypted SQS queue with 14-day message retention
+  # to capture integration errors for troubleshooting
+  customer-profiles:error-queue: False              # Set to True for production
+  
+  # Profile expiration in days
+  # Profiles older than this will be automatically deleted
+  # Default: 366 days (1 year + 1 day for leap years)
+  # Max 1098 days 
+  customer-profiles:default-expiration-days: 366

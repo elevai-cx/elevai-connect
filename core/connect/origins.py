@@ -96,5 +96,4 @@ def _create_approved_origin(
         opts=pulumi.ResourceOptions(depends_on=[connect_instance])
     )
     
-    pulumi.log.info(f"Created approved origin: {origin_url}")
     return approved_origin

@@ -29,6 +29,7 @@ from .logging import configure_log_retention
 from .origins import create_approved_origins
 from .data_lake import setup_analytics_data_lake, create_lake_formation_database, create_resource_links, _get_default_data_sets
 from .athena import configure_athena_workgroup, create_athena_named_queries
+from ..post_deployment_tracker import add_manual_step
 
 
 def create_connect_instance(
@@ -107,6 +108,11 @@ def create_connect_instance(
         multi_party_conference_enabled=multi_party_conference_enabled,
         contact_flow_logs_enabled=contact_flow_logs_enabled,
         opts=pulumi.ResourceOptions(depends_on=depends_on_resources)
+    )
+
+    add_manual_step(
+        title="Enable Contact Flow Features",
+        doc_link="docs/POST_DEPLOYMENT_STEPS.md###1-enable-contact-flow-features",
     )
     
     # Create storage config for contact trace records
