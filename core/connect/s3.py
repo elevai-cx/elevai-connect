@@ -84,6 +84,7 @@ def create_s3_buckets(
         ("screenRecordings", "screen-recordings", "ScreenRecordings"),
         ("contactEvaluations", "contact-evaluations", "ContactEvaluations"),
         ("emailMessages", "email-messages", "EmailMessages"),
+        ("connectAthenaQueries", "connect-datalake-queries", "AthenaQueryResults"),
     ]
     
     # Create each bucket using utility function
@@ -91,6 +92,20 @@ def create_s3_buckets(
         archive_days, deletion_days = get_retention_config(
             config, config_key, default_archive_days, default_deletion_days
         )
+        
+        # Athena query results should not transition to IA (frequently accessed)
+        if config_key == "connectAthenaQueries":
+            lifecycle_rules = [
+                aws.s3.BucketLifecycleConfigurationRuleArgs(
+                    id="expire-only",
+                    status="Enabled",
+                    expiration=aws.s3.BucketLifecycleConfigurationRuleExpirationArgs(
+                        days=deletion_days,
+                    ),
+                )
+            ]
+        else:
+            lifecycle_rules = None  # Use default archive + expire
         
         bucket = create_secure_s3_bucket(
             resource_name=resource_name,
@@ -100,16 +115,16 @@ def create_s3_buckets(
             logging_bucket=logging_bucket,
             archive_days=archive_days,
             deletion_days=deletion_days,
+            lifecycle_rules=lifecycle_rules,
         )
         
         # Store with underscore key for backwards compatibility
-        bucket_key = config_key.replace("T", "_t").replace("R", "_r").replace("E", "_e").replace("M", "_m")
-        if not any(c.isupper() for c in bucket_key):
-            bucket_key = config_key.replace("chatTranscripts", "chat_transcripts") \
-                                   .replace("exportedReports", "exported_reports") \
-                                   .replace("screenRecordings", "screen_recordings") \
-                                   .replace("contactEvaluations", "contact_evaluations") \
-                                   .replace("emailMessages", "email_messages")
+        bucket_key = config_key.replace("chatTranscripts", "chat_transcripts") \
+                               .replace("exportedReports", "exported_reports") \
+                               .replace("screenRecordings", "screen_recordings") \
+                               .replace("contactEvaluations", "contact_evaluations") \
+                               .replace("emailMessages", "email_messages") \
+                               .replace("connectAthenaQueries", "athena_queries")
         buckets[bucket_key] = bucket
     
     return buckets

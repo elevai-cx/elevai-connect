@@ -16,6 +16,7 @@ config:
   environment:type: dev                    # dev, staging, prod, etc.
   aws:region: us-east-1                    # Your AWS region
   aws-native:region: us-east-1
+  aws-account-id: "000000000000"
 
   # --------------------------------------------------------------------------
   # ALERTING & NOTIFICATIONS
@@ -186,6 +187,15 @@ config:
   s3:contactEvaluations.deletionDays: "1095"
   s3:emailMessages.archiveDays: "90"
   s3:emailMessages.deletionDays: "365"
+
+
+  # --------------------------------------------------------------------------
+  # AMAZON DATA LAKE SETTING
+  # --------------------------------------------------------------------------
+
+  s3:connectAthenaQueries.archiveDays: "91"
+  s3:connectAthenaQueries.deletionDays: "90"
+  athena:bytesScannedCutoff: "5368709120"  # Custom query size limit. 5GB
 
   # --------------------------------------------------------------------------
   # AMAZON Q IN CONNECT (QConnect)

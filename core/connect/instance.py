@@ -21,12 +21,14 @@ Handles the creation and configuration of Amazon Connect instances.
 from typing import Dict
 import pulumi
 import pulumi_aws as aws
+import pulumi_command as command
 
 from .validation import validate_instance_alias
 from .storage import associate_s3_buckets, create_contact_flow_logs_firehose
 from .logging import configure_log_retention
 from .origins import create_approved_origins
-from .data_lake import setup_analytics_data_lake
+from .data_lake import setup_analytics_data_lake, create_lake_formation_database, create_resource_links, _get_default_data_sets
+from .athena import configure_athena_workgroup, create_athena_named_queries
 
 
 def create_connect_instance(
@@ -137,8 +139,50 @@ def create_connect_instance(
     
     # Set up analytics data lake if enabled
     if enable_data_lake:
-        data_lake_setup, ram_acceptance = setup_analytics_data_lake(
+        data_lake_setup, ram_acceptance, discover_db = setup_analytics_data_lake(
             connect_instance, tags=tags
         )
+        
+        # Set up Lake Formation database and resource links
+        lake_config = pulumi.Config("datalake")
+        if lake_config.get_bool("createLakeFormation") != False:  # Default: True
+            database_name = lake_config.get("databaseName") or "connect_analytics"
+            
+            # Create Lake Formation database
+            lf_database = create_lake_formation_database(
+                database_name=database_name,
+                description=f"Amazon Connect Analytics Data Lake for {instance_alias}",
+                tags=tags
+            )
+            
+            pulumi.export("lake_formation_database", lf_database.name)
+            
+            # Always create resource links for all shared tables
+            resource_links_cmd = create_resource_links(
+                database=lf_database,
+                discover_command=discover_db,
+                data_set_ids=None,  # None = all 27 tables
+                tags=tags
+            )
+            
+            pulumi.export("resource_links_creation_output", resource_links_cmd.stdout)
+            
+            # Configure Athena workgroup if bucket is available
+            if "athena_queries" in s3_buckets:
+                athena_workgroup = configure_athena_workgroup(
+                    athena_bucket=s3_buckets["athena_queries"],
+                    kms_key=kms_key,
+                    workgroup_name="connect-analytics",
+                    tags=tags
+                )
+                
+                # Create helpful named queries for the resource links
+                named_queries = create_athena_named_queries(
+                    database_name=database_name,
+                    workgroup=athena_workgroup,
+                    tags=tags
+                )
+            else:
+                pulumi.log.warn("Athena queries bucket not found - skipping Athena workgroup configuration")
     
     return connect_instance, firehose, firehose_bucket

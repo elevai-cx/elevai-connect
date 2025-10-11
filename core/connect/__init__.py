@@ -22,10 +22,13 @@ from .instance import create_connect_instance
 from .validation import validate_instance_alias
 from .s3 import create_s3_buckets
 from .iam import create_iam_resources
+from .athena import configure_athena_workgroup, create_athena_named_queries
 
 __all__ = [
     'create_connect_instance',
     'validate_instance_alias',
     'create_s3_buckets',
     'create_iam_resources',
+    'configure_athena_workgroup',
+    'create_athena_named_queries',
 ]
