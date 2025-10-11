@@ -22,9 +22,7 @@ These are designed to be updated from the upstream repository without conflicts.
 from typing import Dict, Any
 import pulumi
 
-from .connect import create_connect_instance
-from .s3 import create_s3_buckets
-from .iam import create_iam_resources
+from .connect import create_connect_instance, create_s3_buckets, create_iam_resources
 from .lambda_functions import create_lambda_functions
 from .qconnect import create_qconnect_integration, create_qconnect_knowledge_bucket
 from .kms import create_connect_data_key
