@@ -9,10 +9,10 @@
 
 A comprehensive, project for deploying Amazon Connect contact centers with Python. This project goes beyond basic infrastructure deployment to provide a battle-tested foundation with production-ready monitoring, intelligent alerting, SAML authentication, and additional out of the box features.
 
-# PREVIEW: Deploy with Claude Code and MCP
-AI has turned ideas into reality and with elevai-connect and MCP we're re-imagine the developer experience. By using Claude Code you are able to interact using natural language to set-up and configure your Amazon Connect instance.
+## PREVIEW: Deploy with Claude Code and MCP
+AI has turned ideas into reality and with elevai-connect and MCP we re-imagine the developer experience. By using Claude Code you are able to interact using natural language to set-up and configure your Amazon Connect instance.
 
-In additional you will find workshops within this project that AI can walk you through to build great experiences and supercharge your development.
+Once you haver your instance, you will find workshops within this project that AI can walk you through to build great experiences and supercharge your development.
 
 To get started visit the [README](/docs/CLAUDE_CODE_SETUP.md).
 
