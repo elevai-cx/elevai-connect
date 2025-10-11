@@ -1,76 +1,55 @@
 # Amazon Connect Pulumi Infrastructure Project
 
-## ⚠️ CRITICAL SAFETY RULES FOR CLAUDE
+## ⚠️ CRITICAL SAFETY RULES
 
-**When working with this project, Claude MUST follow these rules:**
+**Claude MUST follow these rules when working with this project:**
 
-### 🚨 Deployment Safety
+### Deployment Safety
 
-1. ✅ **Use bash command** for `pulumi preview` (read-only, shows changes)
-2. ✅ **Use MCP tool** `pulumi_up` for deployment (uses --skip-preview flag)
-3. ❌ **NEVER** run `pulumi destroy` as a bash command - use MCP tool `pulumi_destroy` only
-4. ❌ **NEVER** use `--yes` flag with any Pulumi commands
-5. ✅ ALWAYS show preview before deploying
+| Action              | Correct Method                  | ❌ Never Do This                             |
+| ------------------- | ------------------------------- | ------------------------------------------- |
+| **Preview changes** | `pulumi preview` (bash)         | -                                           |
+| **Deploy**          | MCP tool: `pulumi_up`           | ❌ `pulumi up` (bash)<br>❌ `pulumi up --yes` |
+| **Destroy**         | MCP tool: `pulumi_destroy`      | ❌ `pulumi destroy` (bash)                   |
+| **Change config**   | MCP tool: `update_stack_config` | ❌ `pulumi config set` (bash)                |
+| **Read config**     | MCP tool: `read_stack_config`   | `pulumi config get` (bash - OK)             |
 
-**Why this workflow:** Bash `pulumi preview` shows changes clearly. MCP `pulumi_up` uses `--skip-preview` flag (safer than `--yes`) and works in non-interactive mode. The preview MUST be shown first.
+**Deployment Workflow:**
+1. Run `pulumi preview --stack <stack>` (bash command)
+2. Show preview to user
+3. Ask for confirmation
+4. Use MCP tool `pulumi_up` with stack parameter
+5. Wait for completion
 
-### ⚙️ Configuration Management
+**Why:** Bash preview shows changes clearly. MCP tools use `--skip-preview` flag and work in non-interactive mode. NEVER use `--yes` flag.
 
-1. ✅ **ALWAYS use MCP tool** `update_stack_config` to modify configuration
-2. ❌ **NEVER** run `pulumi config set` bash commands
-3. ✅ After updating config, run `pulumi preview` bash command to see changes
-4. ✅ Then use MCP tool `pulumi_up` to deploy
-5. ✅ Use `read_stack_config` MCP tool to read current configuration
+### File Modification Rules
 
-**Why:** Configuration should be maintained in `Pulumi.*.yaml` files which can be version controlled and reviewed. The MCP tool `update_stack_config` modifies these YAML files directly.
+| Directory/File          | Can Modify? | Purpose                                            |
+| ----------------------- | ----------- | -------------------------------------------------- |
+| ✅ `custom/`             | YES         | Add custom extensions here                         |
+| ✅ `Pulumi.<stack>.yaml` | YES         | Stack configuration                                |
+| ❌ `core/`               | NO          | Core infrastructure (maintained by project owners) |
+| ❌ `__main__.py`         | NO          | Main entry point                                   |
+| ❌ `Pulumi.yaml`         | NO          | Project definition                                 |
+| ❌ `mcp-server/`         | NO          | MCP server code                                    |
 
-### 📁 File Modification Rules
-
-**Files Claude CAN modify:**
-- ✅ `custom/` directory - Add new Python modules here
-- ✅ `Pulumi.dev.yaml` - Stack-specific configuration
-- ✅ `Pulumi.staging.yaml` - Stack-specific configuration  
-- ✅ `Pulumi.prod.yaml` - Stack-specific configuration
-
-**Files Claude MUST NEVER modify:**
-- ❌ `core/` directory - Core infrastructure (maintained by project owners)
-- ❌ `__main__.py` - Main entry point
-- ❌ `Pulumi.yaml` - Project definition
-- ❌ `mcp-server/` - MCP server code
-- ❌ Any Python files outside `custom/`
-
-**Why:** The `core/` directory contains the project's infrastructure foundation. Users should only extend via `custom/` directory to keep their changes separate from core updates.
-
-**If a user asks to modify core infrastructure:**
-1. Explain that core files shouldn't be modified directly
-2. Suggest creating a custom extension in `custom/` directory instead
-3. Show how to use `core_resources` dict to reference core infrastructure
-4. Only modify core files if user explicitly insists and understands the risks
-
-**Correct approach for deployments:**
-- Run `pulumi preview --stack <stack>` (bash command, read-only)
-- Use MCP tool `pulumi_up` with stack parameter (uses --skip-preview)
-- ALWAYS show preview before deployment
-
-**Correct approach for destroy:**
-- Use MCP tool: `pulumi_destroy` (NOT bash command)
-- Extra safeguards in MCP tool
-
-**NEVER do this:**
-- ❌ `pulumi destroy` (bash command - use MCP tool instead)
-- ❌ `pulumi up --yes` (bash command with --yes flag)
-- ❌ `pulumi destroy --yes` (bash command with --yes flag)
+**If user requests core changes:**
+1. Explain core files shouldn't be modified
+2. Suggest creating extension in `custom/` directory
+3. Show how to use `core_resources` dict
+4. Only modify core if user explicitly insists
 
 ---
 
 ## Project Overview
 
-Production-ready Pulumi project for deploying Amazon Connect contact centers with comprehensive monitoring, security, and AI capabilities. Written in Python with a modular architecture separating core infrastructure from custom extensions.
+Production-ready Pulumi project for Amazon Connect contact centers with monitoring, security, and AI capabilities.
 
 **Key Features:**
 - Amazon Connect with SAML or managed authentication
-- 70+ CloudWatch alarms for monitoring
-- Amazon Q in Connect for AI assistance
+- 70+ CloudWatch alarms
+- Amazon Q in Connect
 - Modular architecture (core + custom)
 
 ## Project Structure
@@ -79,99 +58,39 @@ Production-ready Pulumi project for deploying Amazon Connect contact centers wit
 /
 ├── __main__.py              # Main entry point
 ├── Pulumi.yaml             # Project definition (committed)
-├── Pulumi.<stack>.yaml     # Stack config (NOT committed - personal)
-├── mcp.json                # MCP server configuration
-├── Claude.md               # This file
+├── Pulumi.<stack>.yaml     # Stack config (NOT committed)
 ├── requirements.txt        # Python dependencies
-├── core/                   # Core infrastructure modules
-│   ├── connect.py         # Amazon Connect resources
-│   ├── s3.py              # S3 buckets
-│   ├── iam.py             # IAM roles and SAML
-│   ├── lambda_functions.py # Lambda deployments
-│   ├── qconnect.py        # Amazon Q integration
-│   └── alerting/          # CloudWatch alarms
-├── custom/                # Custom extensions (user-defined)
+├── core/                   # Core infrastructure (DON'T MODIFY)
+│   ├── connect.py
+│   ├── s3.py
+│   ├── iam.py
+│   ├── lambda_functions.py
+│   ├── qconnect.py
+│   └── alerting/
+├── custom/                # Custom extensions (MODIFY HERE)
 │   └── __init__.py
-├── mcp-server/            # MCP server for Claude Code
-├── lambda-code/           # Lambda function source code
-├── docs/                  # Documentation
-└── scripts/               # Utility scripts
-```
-
-## Key Commands
-
-### 🚨 IMPORTANT: When to Use MCP Tools vs Bash Commands
-
-**Use MCP Tools (NOT bash commands) for:**
-- ❌ `pulumi up` → Use MCP tool: `pulumi_up` (uses --skip-preview)
-- ❌ `pulumi destroy` → Use MCP tool: `pulumi_destroy` (NEVER bash)
-- ❌ `pulumi config set` → Use MCP tool: `update_stack_config`
-- ✅ Modifying configuration → Use MCP tool: `update_stack_config`
-
-**Safe to use bash commands for:**
-- ✅ `pulumi preview` (read-only, shows changes - ALWAYS run before deployment)
-- ✅ `pulumi stack output`
-- ✅ `pulumi stack ls`
-- ✅ `pulumi config get`
-- ✅ `pulumi refresh`
-
-**CRITICAL:** ALWAYS run `pulumi preview` before using `pulumi_up` MCP tool. Never use `--yes` flag.
-
-### Essential Pulumi Commands (For Direct Terminal Use)
-
-**Note:** Claude should use bash for `pulumi preview` (read-only) and MCP tool `pulumi_up` for deployments. Use MCP tools for `pulumi destroy` and configuration changes.
-
-```bash
-# Preview changes before applying
-pulumi preview
-
-# Deploy infrastructure
-pulumi up
-
-# Destroy all resources (ALWAYS requires manual approval)
-pulumi destroy
-
-# Refresh state from actual AWS resources
-pulumi refresh
-
-# View stack outputs
-pulumi stack output
-
-# View all stack outputs as JSON
-pulumi stack output --json
-
-# List all stacks
-pulumi stack ls
-
-# Select a different stack
-pulumi stack select <stack-name>
-
-# Configuration commands (Claude should use update_stack_config MCP tool instead)
-pulumi config set <key> <value>
-pulumi config set --secret <key> <value>
-pulumi config get <key>
+├── lambda-code/           # Lambda source code
+├── workshops/             # Hands-on tutorials
+└── docs/                  # Documentation
 ```
 
 ## Configuration Management
 
 ### Configuration Files
 
-| File                          | Purpose               | Committed? |
-| ----------------------------- | --------------------- | ---------- |
-| `Pulumi.yaml`                 | Project definition    | ✅ Yes      |
-| `Pulumi.<stack>.yaml`         | Stack-specific config | ❌ No       |
-| `Pulumi.<stack>.yaml.example` | Template              | ✅ Yes      |
+| File                          | Purpose            | Committed? |
+| ----------------------------- | ------------------ | ---------- |
+| `Pulumi.yaml`                 | Project definition | ✅ Yes      |
+| `Pulumi.<stack>.yaml`         | Stack config       | ❌ No       |
+| `Pulumi.<stack>.yaml.example` | Template           | ✅ Yes      |
 
-### Critical Configuration Values
-
-⚠️ **These CANNOT be changed after initial deployment:**
+### Critical: Cannot Change After Deployment
 - `connect:instanceAlias` - Must be globally unique
-- `connect:identityManagementType` - Either SAML or CONNECT_MANAGED
+- `connect:identityManagementType` - SAML or CONNECT_MANAGED
 
 ### Required Configuration
 
 ```yaml
-# Minimum required configuration
 aws:region: eu-west-2
 alerting:error_email: "ops@example.com"
 billing:notificationEmail: "billing@example.com"
@@ -179,91 +98,64 @@ connect:instanceAlias: your-unique-alias
 connect:identityManagementType: SAML  # or CONNECT_MANAGED
 ```
 
+### Modifying Configuration - Correct Workflow
+
+```
+User: "Enable QConnect"
+
+Claude:
+1. Use MCP tool: update_stack_config
+   stack="dev"
+   updates={"qconnect:enabled": true}
+
+2. Run bash: pulumi preview --stack dev
+   (Show preview to user)
+
+3. Ask: "Would you like to deploy?"
+
+4. Use MCP tool: pulumi_up with stack="dev"
+```
+
 ## Common Workflows
-
-### 🚨 Deploying Infrastructure (CRITICAL - Read This First!)
-
-**When a user asks to deploy, Claude MUST:**
-
-1. **First**: Run `pulumi preview --stack <stack>` as a bash command
-2. **Show the preview** to the user in detail
-3. **Ask for confirmation**: "Would you like me to proceed with deployment?"
-4. **If yes**: Use MCP tool `pulumi_up` with stack parameter
-5. **Explain**: "I'll deploy using the MCP tool with --skip-preview flag."
-6. **Wait** for the deployment to complete
-
-**Example correct workflow:**
-```
-User: "Deploy my changes to dev"
-
-Claude: "Let me preview the changes first."
-[Runs bash command: pulumi preview --stack dev]
-[Shows preview output]
-
-"The preview shows:
-- 2 resources will be updated
-- 0 resources will be created
-- 0 resources will be deleted
-
-Would you like me to proceed with deployment?"
-
-User: "Yes"
-
-Claude: "I'll deploy now using the MCP tool with --skip-preview flag."
-[Calls MCP tool: pulumi_up with stack="dev"]
-
-"Deployment complete! ✓"
-```
-
-**WRONG - NEVER DO THIS:**
-```
-User: "Deploy my changes to dev"
-Claude: [Runs: pulumi up --stack dev]  ❌ WRONG! Use MCP tool!
-Claude: [Runs: pulumi up --stack dev --yes]  ❌ WRONG! Never use --yes!
-
-User: "Destroy the dev stack"
-Claude: [Runs: pulumi destroy --stack dev]  ❌ WRONG! Use MCP tool!
-```
 
 ### Initial Setup
 
-1. Clone the repository
-2. Create and activate virtual environment
-3. Install dependencies: `pip install -r requirements.txt`
-4. Login to Pulumi: `pulumi login`
-5. Create stack config: `cp Pulumi.dev.yaml.example Pulumi.dev.yaml`
-6. Edit configuration with your values
-7. Initialize stack: `pulumi stack init dev`
-8. Preview: `pulumi preview`
-9. Deploy: `pulumi up`
+```bash
+# 1. Setup environment
+git clone <repo>
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Configure Pulumi
+pulumi login
+cp Pulumi.dev.yaml.example Pulumi.dev.yaml
+# Edit Pulumi.dev.yaml with your values
+
+# 3. Initialize and deploy
+pulumi stack init dev
+pulumi preview  # Review changes
+pulumi up       # Deploy (manual approval required)
+```
 
 ### Adding Custom Resources
 
-**⚠️ IMPORTANT: Always add custom code to `custom/` directory, NEVER modify `core/` files.**
-
-1. Create Python module in `custom/` directory (e.g., `custom/my_integration.py`)
-2. Import and initialize in `custom/__init__.py`
-3. Use `core_resources` dict to reference core infrastructure
-4. Deploy: `pulumi preview` (bash) then use MCP tool `pulumi_up`
-
-**Example: Adding a custom Lambda function**
+**Always add to `custom/` directory - never modify `core/`**
 
 ```python
 # custom/my_integration.py
-import pulumi
 import pulumi_aws as aws
 
 def create_my_integration(core_resources, tags):
-    """Create custom integration resources."""
+    """Create custom resources."""
     
-    # Access core resources (don't modify them!)
+    # Access core resources (read-only)
     connect_id = core_resources.get("connect_instance_id")
     s3_buckets = core_resources.get("s3_buckets", {})
-    recordings_bucket = s3_buckets.get("recordings")
     
-    # Create your custom Lambda
+    # Create your resources
     my_lambda = aws.lambda_.Function(
-        "my-custom-lambda",
+        "my-lambda",
         runtime="python3.13",
         handler="index.handler",
         role=my_role.arn,
@@ -273,9 +165,7 @@ def create_my_integration(core_resources, tags):
         tags=tags
     )
     
-    return {
-        "my_lambda": my_lambda
-    }
+    return {"my_lambda": my_lambda}
 ```
 
 ```python
@@ -283,89 +173,13 @@ def create_my_integration(core_resources, tags):
 from .my_integration import create_my_integration
 
 def initialize_custom_resources(core_resources, tags):
-    """Initialize all custom resources."""
     custom = {}
-    
-    # Add your integration
     integration = create_my_integration(core_resources, tags)
     custom.update(integration)
-    
     return custom
 ```
 
-**Why we use `custom/` directory:**
-- Keeps your changes separate from core infrastructure
-- Makes it easy to update core infrastructure without conflicts
-- Clear separation between maintained core and user extensions
-- Your custom code is portable across core updates
-
-### Modifying Configuration
-
-**⚠️ IMPORTANT: Use MCP tools to modify configuration, NOT bash commands.**
-
-**Correct workflow:**
-
-1. Use `update_stack_config` MCP tool to modify the YAML file
-2. Run `pulumi preview` bash command to see the changes
-3. Use MCP tool `pulumi_up` to deploy
-
-**Example correct workflow:**
-```
-User: "Change the QConnect setting to enabled"
-
-Claude:
-[Calls MCP tool: update_stack_config with:
-  stack="dev"
-  updates={"qconnect:enabled": true}
-]
-
-"I've updated qconnect:enabled to true in Pulumi.dev.yaml.
-
-Would you like me to preview the infrastructure changes?"
-
-User: "Yes"
-
-Claude:
-[Runs bash: pulumi preview --stack dev]
-
-"The preview shows 3 resources will be updated. Would you like to deploy?"
-
-User: "Yes"
-
-Claude:
-[Calls MCP tool: pulumi_up with stack="dev"]
-
-"Deploying with --skip-preview flag..."
-"Deployment complete! ✓"
-```
-
-**WRONG - NEVER DO THIS:**
-```
-User: "Change QConnect to enabled"
-Claude: [Runs bash: pulumi config set qconnect:enabled true]  ❌ WRONG!
-```
-
-## Important Constraints
-
-### Amazon Connect Limitations
-
-1. **Instance Alias**: Cannot be changed after creation
-2. **Identity Management Type**: Cannot be changed after creation
-3. **SAML Metadata**: Can be updated after deployment
-4. **Service Quotas**: Check and request increases before production
-
-### Pulumi State
-
-- Stack state stored in Pulumi backend (cloud or local)
-- NEVER manually edit state files
-- Use `pulumi refresh` if state is out of sync
-- Back up state regularly: `pulumi stack export`
-
-## Working with Core Modules
-
-### Core Module Return Values
-
-The `create_core_infrastructure()` function returns a dict with:
+### Core Resources Available
 
 ```python
 {
@@ -380,112 +194,128 @@ The `create_core_infrastructure()` function returns a dict with:
 }
 ```
 
-### Accessing Core Resources in Custom Code
+## Essential Commands
 
-```python
-def initialize_custom_resources(core_resources, tags):
-    # Get Connect instance ID
-    connect_id = core_resources.get("connect_instance_id")
-    
-    # Get S3 buckets
-    s3_buckets = core_resources.get("s3_buckets", {})
-    recordings_bucket = s3_buckets.get("recordings")
-    
-    # Get Lambda functions
-    lambdas = core_resources.get("lambda_functions", {})
-    
-    # Get Q Connect resources
-    qconnect = core_resources.get("qconnect", {})
-    assistant_id = qconnect.get("assistant_id")
-    
-    return {}
+### Safe for Bash
+```bash
+pulumi preview                  # Review changes (ALWAYS run first)
+pulumi stack output            # View outputs
+pulumi stack ls                # List stacks
+pulumi config get <key>        # Read config value
+pulumi refresh                 # Sync state with AWS
 ```
+
+### Use MCP Tools (NOT Bash)
+- ❌ `pulumi up` → Use MCP: `pulumi_up`
+- ❌ `pulumi destroy` → Use MCP: `pulumi_destroy`
+- ❌ `pulumi config set` → Use MCP: `update_stack_config`
+
+## Workshops & Tutorials
+
+Hands-on workshops for implementing features. Located in `/workshops/` directory.
+
+### Available Workshops
+
+#### 1. Amazon Q Knowledge Base Setup
+**Path:** `workshops/q-knowledgebase-set-up/`  
+**Duration:** 30 minutes  
+**Level:** Beginner
+
+**Topics:**
+- Upload documents to Q Knowledge Base
+- Configure metadata and tagging
+- Create Lex bots for FAQ handling
+- Import Connect contact flows
+- Test Q integration in chat
+
+**Prerequisites:**
+- Amazon Connect instance deployed
+- AWS Console access
+- Pulumi CLI configured
+
+**Start:** [workshops/q-knowledgebase-set-up/README.md](workshops/q-knowledgebase-set-up/README.md)
+
+### Using Workshops
+
+1. Check prerequisites
+2. Read entire workshop first
+3. Follow steps sequentially, do not do more that 1 step at a time
+4. Use Claude Code for questions
+5. Verify outputs and troubleshoot
+
+### Workshop Structure
+
+Each workshop contains:
+- Comprehensive README.md
+- Sample files and resources
+- Troubleshooting guidance
+- Links to additional resources
 
 ## Deployment Best Practices
 
 ### Pre-Deployment Checklist
-
-1. Review configuration changes: `git diff`
-2. Preview changes: `pulumi preview`
-3. Check for breaking changes in output
-4. Verify email addresses for alerts
-5. Confirm budget limits are appropriate
+1. ✅ Review config changes: `git diff`
+2. ✅ Preview: `pulumi preview`
+3. ✅ Check for breaking changes
+4. ✅ Verify email addresses
+5. ✅ Confirm budget limits
 
 ### Deployment Process
-
 ```bash
-# 1. Preview
+# 1. Preview and save
 pulumi preview > preview.txt
-# Review preview.txt
 
-# 2. Deploy (requires manual approval at prompt)
+# 2. Review preview.txt thoroughly
+
+# 3. Deploy (manual approval required)
 pulumi up
 
-# 3. Verify outputs
+# 4. Verify
 pulumi stack output
-
-# 4. Test critical paths
 ```
 
-⚠️ **IMPORTANT SAFETY FEATURE**: When using Claude Code with the MCP server, `pulumi up` and `pulumi destroy` commands NEVER use the `--yes` flag. You will always be prompted to manually review and approve changes in your terminal. This prevents accidental deployments or resource destruction.
-
 ### Rollback Strategy
-
 ```bash
-# Export current state as backup
+# Backup before deployment
 pulumi stack export --file backup-$(date +%Y%m%d).json
 
-# If deployment fails, cancel
+# Cancel if issues arise
 Ctrl+C
 
-# To rollback, restore previous state
+# Restore previous state if needed
 pulumi stack import --file backup-previous.json
 pulumi refresh
 ```
 
 ## Troubleshooting
 
-### Common Issues
+| Issue                     | Solution                                        |
+| ------------------------- | ----------------------------------------------- |
+| "Resource already exists" | Use `pulumi import` to import existing resource |
+| "No updates to perform"   | Run `pulumi refresh` to sync state              |
+| "Concurrent modification" | Wait for other operation or `pulumi cancel`     |
+| Authentication errors     | Verify: `aws sts get-caller-identity`           |
 
-**"Resource already exists" Error**
-- Check if resource was created outside Pulumi
-- Use `pulumi import` to import existing resource
-
-**"No updates to perform"**
-- Configuration may not have changed
-- State may be out of sync: run `pulumi refresh`
-
-**"Concurrent modification" Error**
-- Another user is running pulumi simultaneously
-- Wait for other operation to complete
-- Check for stale locks: `pulumi cancel`
-
-**Authentication Errors**
-- Verify AWS credentials: `aws sts get-caller-identity`
-- Check region configuration matches AWS CLI
-
-## Security Considerations
+## Security
 
 ### Secrets Management
-
 - Use `pulumi config set --secret` for sensitive values
-- Never commit `Pulumi.<stack>.yaml` files with secrets
-- Secrets are encrypted in Pulumi state
+- Never commit `Pulumi.<stack>.yaml` with secrets
+- Secrets encrypted in Pulumi state
 - Use AWS Secrets Manager for runtime secrets
 
 ### Encryption
-
-All data is encrypted:
-- S3: SSE-KMS with customer-managed keys
+All data encrypted at rest:
+- S3: SSE-KMS with customer keys
 - DynamoDB: At-rest encryption
 - CloudWatch Logs: Encrypted
 - Kinesis Streams: Encrypted
 
 ## Integration Points
 
-### Parameter Store
+### Parameter Store Exports
 
-Core resources are exported to AWS Systems Manager Parameter Store:
+Core resources exported to SSM Parameter Store:
 
 ```
 /elevai-connect/{stack}/connect/instance-id
@@ -494,112 +324,91 @@ Core resources are exported to AWS Systems Manager Parameter Store:
 /elevai-connect/{stack}/qconnect/assistant-id
 ```
 
-External applications can read these values without direct Pulumi dependency.
+External apps can read these without Pulumi dependency.
 
 ## Monitoring
 
 ### Alarm Categories
-
-- **ERROR**: Critical issues requiring immediate action
+- **ERROR**: Critical - immediate action required
 - **WARNING**: Important trends to monitor
 - **INFO**: Informational notifications
 
-### Accessing Logs
-
+### CloudWatch Logs
 ```bash
-# View CloudWatch log groups
+# List log groups
 aws logs describe-log-groups --log-group-name-prefix /aws/connect
 
-# Tail logs for Lambda function
+# Tail Lambda logs
 aws logs tail /aws/lambda/<function-name> --follow
 ```
 
 ## Advanced Usage
 
 ### Multiple Environments
-
 ```bash
-# Development
-pulumi stack select dev
-pulumi up
-
-# Staging
-pulumi stack select staging
-pulumi up
-
-# Production
-pulumi stack select prod
-pulumi up --yes  # If in CI/CD
+pulumi stack select dev && pulumi up
+pulumi stack select staging && pulumi up
+pulumi stack select prod && pulumi up
 ```
 
 ### CI/CD Integration
-
 ```bash
-# Set Pulumi token
 export PULUMI_ACCESS_TOKEN=<token>
-
-# Set AWS credentials
 export AWS_ACCESS_KEY_ID=<key>
 export AWS_SECRET_ACCESS_KEY=<secret>
 
-# Deploy
-pulumi up --yes --stack prod
+pulumi up --yes --stack prod  # OK in CI/CD only
 ```
 
-## Support Resources
+## Key Configuration Reference
 
-- **Documentation**: `/docs` directory
+```yaml
+# Required
+aws:region: eu-west-2
+connect:instanceAlias: "unique-alias"          # PERMANENT
+connect:identityManagementType: "SAML"         # PERMANENT
+
+# SAML (if applicable)
+connect:samlMetadataFile: "path/to/metadata.xml"
+
+# Alerting
+alerting:error_email: "ops@example.com"
+
+# Budget
+billing:notificationEmail: "billing@example.com"
+billing:monthlyBudgetLimit: 1000
+
+# Amazon Q
+qconnect:enabled: true
+
+# S3 Lifecycle
+s3:recordings.deletionDays: 90
+```
+
+## Documentation
+
 - **SAML Setup**: `docs/SAML_SETUP_GUIDE.md`
 - **Amazon Q**: `docs/AMAZON_Q_GUIDE.md`
 - **Monitoring**: `docs/MONITORING_GUIDE.md`
 - **Custom Extensions**: `docs/CUSTOM_EXTENSIONS_GUIDE.md`
 - **Claude Code Setup**: `docs/CLAUDE_CODE_SETUP.md`
 
-## Quick Reference
-
-### Common Configuration Keys
-
-```yaml
-aws:region                          # AWS region
-connect:instanceAlias              # Connect instance alias (PERMANENT)
-connect:identityManagementType     # SAML or CONNECT_MANAGED (PERMANENT)
-connect:samlMetadataFile          # Path to SAML metadata XML
-alerting:error_email              # Email for critical alerts
-billing:monthlyBudgetLimit        # Monthly budget in USD
-qconnect:enabled                  # Enable Amazon Q
-s3:recordings.deletionDays        # Days before deleting recordings
-```
-
 ## Remember
 
-### 🔒 CRITICAL SAFETY RULES (Read Every Time)
+✅ **DO:**
+- Use bash for `pulumi preview`
+- Use MCP tools for `pulumi up`, `destroy`, and config changes
+- Always show preview before deploying
+- Only modify files in `custom/` directory
+- Test in dev before production
 
-**Deployment:**
-1. ✅ **Use bash** for `pulumi preview` (read-only, shows changes)
-2. ✅ **Use MCP tool** `pulumi_up` for deployment (uses --skip-preview)
-3. ❌ **NEVER** use `--yes` flag with any Pulumi command
-4. ❌ **NEVER** run `pulumi destroy` as bash - use MCP tool `pulumi_destroy` only
-5. ✅ **ALWAYS** show preview before deploying
+❌ **DON'T:**
+- Never use `--yes` flag
+- Never run `pulumi destroy` as bash command
+- Never modify `core/` directory
+- Never commit stack config files with secrets
+- Never skip preview before deployment
 
-**Configuration:**
-1. ❌ **NEVER** run `pulumi config set` bash commands
-2. ✅ **ALWAYS** use MCP tool `update_stack_config` to modify configuration
-3. ✅ After config changes, use `pulumi preview` then MCP tool `pulumi_up`
-4. ✅ Use `read_stack_config` to read current configuration
+---
 
-**File Modifications:**
-1. ✅ **ONLY** modify files in `custom/` directory for extensions
-2. ✅ **ONLY** modify `Pulumi.<stack>.yaml` for configuration
-3. ❌ **NEVER** modify `core/` directory files
-4. ❌ **NEVER** modify `__main__.py` or `Pulumi.yaml`
-5. ✅ If user needs core changes, create `custom/` extension instead
-
-### Other Important Things
-
-- ⚠️ `instanceAlias` and `identityManagementType` are PERMANENT
-- 📧 Always configure alert emails before deployment
-- 🔒 Never commit stack configuration files with secrets
-- 🧪 Test in dev environment before deploying to production
-- 💾 Back up stack state before major changes
-- 📊 Monitor alarms after deployment
-- 📝 Document all custom extensions
+*Note: `instanceAlias` and `identityManagementType` are permanent - cannot be changed after deployment.*

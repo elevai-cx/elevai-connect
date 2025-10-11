@@ -69,6 +69,10 @@ The server is configured in the project root's `.mcp.json` file.
 - `list_custom_modules` - List custom extensions
 - `get_project_structure` - Get project layout
 
+### Amazon Connect APIs
+- `connect_create_contact_flow` - Create a new contact flow
+- `connect_delete_contact_flow` - Delete a contact flow
+
 ## Development
 
 ```bash

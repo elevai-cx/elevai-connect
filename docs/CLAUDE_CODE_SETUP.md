@@ -36,6 +36,8 @@ claude
 Try: "List all available Pulumi stacks"
 Try: "What workshops are available"
 
+
+
 ## Example Workflows
 
 ### Deploy Changes

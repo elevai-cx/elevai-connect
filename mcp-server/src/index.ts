@@ -157,6 +157,10 @@ class PulumiConnectServer {
             return await this.listCustomModules();
           case "get_project_structure":
             return await this.getProjectStructure();
+          case "connect_create_contact_flow":
+            return await this.connectCreateContactFlow(args);
+          case "connect_delete_contact_flow":
+            return await this.connectDeleteContactFlow(args);
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -386,6 +390,71 @@ class PulumiConnectServer {
               default: false,
             },
           },
+        },
+      },
+      {
+        name: "connect_create_contact_flow",
+        description:
+          "Create a new Amazon Connect contact flow. Creates a flow that defines the customer experience in the contact center.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            instanceId: {
+              type: "string",
+              description: "The Amazon Connect instance ID",
+            },
+            name: {
+              type: "string",
+              description: "The name of the contact flow",
+            },
+            type: {
+              type: "string",
+              description: "The type of contact flow (CONTACT_FLOW, CUSTOMER_QUEUE, CUSTOMER_HOLD, CUSTOMER_WHISPER, AGENT_HOLD, AGENT_WHISPER, OUTBOUND_WHISPER, AGENT_TRANSFER, QUEUE_TRANSFER)",
+              enum: [
+                "CONTACT_FLOW",
+                "CUSTOMER_QUEUE",
+                "CUSTOMER_HOLD",
+                "CUSTOMER_WHISPER",
+                "AGENT_HOLD",
+                "AGENT_WHISPER",
+                "OUTBOUND_WHISPER",
+                "AGENT_TRANSFER",
+                "QUEUE_TRANSFER",
+              ],
+            },
+            content: {
+              type: "string",
+              description: "The content of the contact flow in JSON format",
+            },
+            description: {
+              type: "string",
+              description: "The description of the contact flow (optional)",
+            },
+            tags: {
+              type: "object",
+              description: "Tags for the contact flow (optional)",
+            },
+          },
+          required: ["instanceId", "name", "type", "content"],
+        },
+      },
+      {
+        name: "connect_delete_contact_flow",
+        description:
+          "Delete an Amazon Connect contact flow. WARNING: This permanently removes the contact flow.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            instanceId: {
+              type: "string",
+              description: "The Amazon Connect instance ID",
+            },
+            contactFlowId: {
+              type: "string",
+              description: "The ID of the contact flow to delete",
+            },
+          },
+          required: ["instanceId", "contactFlowId"],
         },
       },
     ];
@@ -645,6 +714,53 @@ class PulumiConnectServer {
         {
           type: "text",
           text: `Project Structure:\n\n${JSON.stringify(structure, null, 2)}`,
+        },
+      ],
+    };
+  }
+
+  // Amazon Connect API Tools
+
+  private async connectCreateContactFlow(args: any) {
+    // Build the AWS CLI command for creating a contact flow
+    let cmd = `aws connect create-contact-flow --instance-id ${args.instanceId} --name "${args.name}" --type ${args.type}`;
+    
+    // Add content (must be properly escaped JSON)
+    const contentEscaped = args.content.replace(/"/g, '\\"');
+    cmd += ` --content "${contentEscaped}"`;
+    
+    // Add optional parameters
+    if (args.description) {
+      cmd += ` --description "${args.description}"`;
+    }
+    
+    if (args.tags) {
+      cmd += ` --tags '${JSON.stringify(args.tags)}'`;
+    }
+
+    const result = await executeCommand(cmd);
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Contact Flow Created Successfully:\n\n${result.stdout}\n${result.stderr ? `Warnings: ${result.stderr}` : ""}`,
+        },
+      ],
+    };
+  }
+
+  private async connectDeleteContactFlow(args: any) {
+    // Build the AWS CLI command for deleting a contact flow
+    const cmd = `aws connect delete-contact-flow --instance-id ${args.instanceId} --contact-flow-id ${args.contactFlowId}`;
+
+    const result = await executeCommand(cmd);
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Contact Flow Deleted Successfully:\n\nInstance ID: ${args.instanceId}\nContact Flow ID: ${args.contactFlowId}\n\n${result.stdout}${result.stderr ? `\nWarnings: ${result.stderr}` : ""}`,
         },
       ],
     };
