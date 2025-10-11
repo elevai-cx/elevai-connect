@@ -81,92 +81,7 @@ athena:bytesScannedCutoff: "5368709120"  # Custom query size limit. 5GB
 
 ### Example Queries
 
-#### 1. Today's Contact Volume
-
-```sql
-SELECT 
-    COUNT(*) as total_contacts,
-    SUM(CASE WHEN channel = 'VOICE' THEN 1 ELSE 0 END) as voice_calls,
-    SUM(CASE WHEN channel = 'CHAT' THEN 1 ELSE 0 END) as chats,
-    SUM(CASE WHEN channel = 'TASK' THEN 1 ELSE 0 END) as tasks
-FROM contact_record_link
-WHERE DATE(initiation_timestamp) = CURRENT_DATE;
-```
-
-#### 2. Agent Performance (Last 7 Days)
-
-```sql
-SELECT 
-    agent_username,
-    COUNT(*) as contacts_handled,
-    AVG(agent_interaction_duration) as avg_handle_time,
-    AVG(after_contact_work_duration) as avg_acw_time
-FROM contact_record_link
-WHERE initiation_timestamp >= CURRENT_DATE - INTERVAL '7' DAY
-    AND agent_username IS NOT NULL
-GROUP BY agent_username
-ORDER BY contacts_handled DESC;
-```
-
-#### 3. Queue Performance
-
-```sql
-SELECT 
-    queue_name,
-    COUNT(*) as total_contacts,
-    AVG(queue_duration) as avg_queue_time,
-    AVG(agent_interaction_duration) as avg_handle_time,
-    SUM(CASE WHEN disconnection_reason = 'CUSTOMER_DISCONNECT' 
-        THEN 1 ELSE 0 END) as customer_abandons
-FROM contact_record_link
-WHERE DATE(initiation_timestamp) = CURRENT_DATE
-GROUP BY queue_name
-ORDER BY total_contacts DESC;
-```
-
-#### 4. Contact Lens Sentiment Analysis
-
-```sql
-SELECT 
-    contact_id,
-    overall_customer_sentiment_score,
-    overall_agent_sentiment_score,
-    conversation_characteristics
-FROM contact_lens_conversational_analytics_link
-WHERE DATE(contact_start_time) = CURRENT_DATE
-    AND overall_customer_sentiment_score < 0
-ORDER BY overall_customer_sentiment_score ASC
-LIMIT 10;
-```
-
-#### 5. Bot Performance
-
-```sql
-SELECT 
-    bot_name,
-    COUNT(DISTINCT conversation_id) as total_conversations,
-    AVG(conversation_duration_seconds) as avg_duration,
-    SUM(CASE WHEN successful_completion = true THEN 1 ELSE 0 END) as successful_completions
-FROM bot_conversations_link
-WHERE DATE(conversation_start_time) = CURRENT_DATE
-GROUP BY bot_name;
-```
-
-#### 6. Missed Calls by Queue
-
-```sql
-SELECT 
-    queue_name,
-    COUNT(*) as missed_calls,
-    ROUND(AVG(queue_duration), 2) as avg_wait_time_before_abandon
-FROM contact_record_link
-WHERE DATE(initiation_timestamp) = CURRENT_DATE
-    AND disconnection_reason IN ('CONTACT_FLOW_DISCONNECT', 'CUSTOMER_DISCONNECT')
-    AND queue_duration > 0
-    AND agent_connection_attempts = 0
-GROUP BY queue_name
-ORDER BY missed_calls DESC;
-```
+Provided in the Athena UI from [here](../core//connect//athena-queries/). Add your custom queries to [custom/athena-queries/](../custom//athena-queries/)
 
 ## Verification
 
@@ -256,13 +171,6 @@ Amazon Connect retains analytics data for **2 years** by default. After 2 years,
    SELECT * FROM contact_record_link LIMIT 100;
    ```
 
-3. **Use columnar formats** - When exporting, use PARQUET for better compression:
-   ```sql
-   CREATE TABLE exports.contacts_summary
-   WITH (format = 'PARQUET')
-   AS SELECT ...
-   ```
-
 ### Cost Optimization
 
 - **Athena charges per TB scanned** - Always use date filters
@@ -277,40 +185,7 @@ Amazon Connect retains analytics data for **2 years** by default. After 2 years,
 
 ## Integration with BI Tools
 
-### Amazon QuickSight
-
-1. Create new data set → Athena
-2. Select workgroup: `connect-analytics`
-3. Select database: `connect_analytics`
-4. Choose tables and create visualizations
-
-### Tableau / Power BI
-
-Use Athena JDBC/ODBC drivers:
-- **Endpoint:** `https://athena.{region}.amazonaws.com`
-- **Workgroup:** `connect-analytics`
-- **Database:** `connect_analytics`
-
-### Python / Jupyter Notebooks
-
-```python
-import boto3
-import pandas as pd
-
-athena = boto3.client('athena', region_name='us-east-1')
-
-query = """
-SELECT * FROM connect_analytics.contact_record_link 
-WHERE DATE(initiation_timestamp) = CURRENT_DATE
-"""
-
-response = athena.start_query_execution(
-    QueryString=query,
-    WorkGroup='connect-analytics'
-)
-
-# Poll for results and load into pandas DataFrame
-```
+TODO
 
 ## Architecture
 
@@ -349,20 +224,4 @@ response = athena.start_query_execution(
 
 ## Additional Resources
 
-- [Amazon Connect Analytics Data Lake](https://docs.aws.amazon.com/connect/latest/adminguide/analytics-datalake.html)
-- [AWS Lake Formation](https://docs.aws.amazon.com/lake-formation/)
-- [Amazon Athena SQL Reference](https://docs.aws.amazon.com/athena/latest/ug/ddl-sql-reference.html)
-- [Contact Record Data Model](https://docs.aws.amazon.com/connect/latest/adminguide/contact-record-data-model.html)
-
-## Support
-
-For issues or questions:
-- **GitHub Issues:** [Report a bug](https://github.com/bloy.me.uk/elevai-connect/issues)
-- **Discussions:** [Ask a question](https://github.com/bloy.me.uk/elevai-connect/discussions)
-
----
-
-**Next Steps:**
-- [Query historical contact data](#example-queries)
-- [Connect to QuickSight](#integration-with-bi-tools)
-- [Export data for compliance](#data-retention)
+- [Amazon Connect Analytics Data Lake](https://docs.aws.amazon.com/connect/latest/adminguide/data-lake.html)
