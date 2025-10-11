@@ -192,6 +192,8 @@ pulumi stack output
 
 Due to AWS API limitations, complete these steps manually:
 
+Open up AWS Console > Amazon Connect > Your instance > Flows
+
 1. **[Enable Automated Interaction Logs](https://docs.aws.amazon.com/connect/latest/adminguide/monitor-automated-interaction-logs.html)**
 2. **[Enable Lex Bot Management & Analytics](https://docs.aws.amazon.com/connect/latest/adminguide/enable-bot-building.html)**
 3. **Verify Next Generation Amazon Connect** is enabled (default for new instances)

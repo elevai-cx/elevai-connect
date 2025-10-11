@@ -216,7 +216,25 @@ Hands-on workshops for implementing features. Located in `/workshops/` directory
 
 ### Available Workshops
 
-#### 1. Amazon Q Knowledge Base Setup
+#### 1. Deploy elevai-connect
+**Path:** `workshops/elevai-connect-deployment/`  
+**Duration:** 15-20 minutes  
+**Level:** Beginner
+
+**Topics:**
+- Initial deployment of Amazon Connect
+- Stack configuration
+- Interactive deployment with Claude Code
+- Post-deployment verification
+
+**Prerequisites:**
+- AWS CLI configured
+- Python 3.13+ and Pulumi CLI installed
+- AWS permissions for Connect, S3, Lambda, IAM
+
+**Start:** [workshops/elevai-connect-deployment/README.md](workshops/elevai-connect-deployment/README.md)
+
+#### 2. Amazon Q Knowledge Base Setup
 **Path:** `workshops/q-knowledgebase-set-up/`  
 **Duration:** 30 minutes  
 **Level:** Beginner
