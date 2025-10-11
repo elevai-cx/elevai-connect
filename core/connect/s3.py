@@ -35,16 +35,24 @@ def get_retention_config(
     Get retention configuration with fallback to defaults.
     
     Args:
-        config: Pulumi config
-        bucket_type: Bucket type key
+        config: Pulumi Config object for s3 namespace
+        bucket_type: Bucket type key (e.g., 'recordings', 'chatTranscripts')
         default_archive: Default archive days
         default_deletion: Default deletion days
         
     Returns:
         Tuple of (archive_days, deletion_days)
     """
-    archive_days = config.get_int(f"{bucket_type}.archiveDays") or default_archive
-    deletion_days = config.get_int(f"{bucket_type}.deletionDays") or default_deletion
+    # Try to get the nested config for this bucket type
+    bucket_config = config.get_object(bucket_type) or {}
+    
+    archive_days = bucket_config.get("archiveDays")
+    if archive_days is None:
+        archive_days = default_archive
+    
+    deletion_days = bucket_config.get("deletionDays")
+    if deletion_days is None:
+        deletion_days = default_deletion
     
     return archive_days, deletion_days
 
@@ -67,8 +75,14 @@ def create_s3_buckets(
     """
     config = pulumi.Config("s3")
     
-    default_archive_days = config.get_int("archiveDays") or 90
-    default_deletion_days = config.get_int("deletionDays") or 365
+    # Get default retention values
+    default_archive_days = config.get_int("archiveDays")
+    if default_archive_days is None:
+        default_archive_days = 90
+    
+    default_deletion_days = config.get_int("deletionDays")
+    if default_deletion_days is None:
+        default_deletion_days = 365
     
     # Create logging bucket first
     logging_bucket = create_logging_bucket("s3-access-logs", tags, kms_key)

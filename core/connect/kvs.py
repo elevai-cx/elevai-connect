@@ -50,34 +50,20 @@ def configure_kinesis_video_streams(
     Returns:
         InstanceStorageConfig resource if enabled, None otherwise
     """
-    config = pulumi.Config("kinesis-video-stream")
+    config = pulumi.Config("kinesisVideoStream")
     
-    # Try to get the config as an object first (for nested YAML structure)
-    try:
-        # For nested YAML like:
-        # kinesis-video-stream:
-        #   enabled: True
-        #   retentionPeriodHours: 200
-        kvs_config_dict = config.require_object("")
-        kvs_enabled = kvs_config_dict.get("enabled", True)
-        retention_period = kvs_config_dict.get("retentionPeriodHours", 24)
-        prefix = kvs_config_dict.get("prefix", "elevai")
-    except:
-        # Fallback to reading individual keys
-        # For flat structure like:
-        # kinesis-video-stream:enabled: True
-        # kinesis-video-stream:retentionPeriodHours: 200
-        kvs_enabled = config.get_bool("enabled")
-        if kvs_enabled is None:
-            kvs_enabled = True
-        
-        retention_period = config.get_int("retentionPeriodHours")
-        if retention_period is None:
-            retention_period = 24
-        
-        prefix = config.get("prefix")
-        if prefix is None:
-            prefix = "elevai"
+    # Read configuration values
+    kvs_enabled = config.get_bool("enabled")
+    if kvs_enabled is None:
+        kvs_enabled = True
+    
+    retention_period = config.get_int("retentionPeriodHours")
+    if retention_period is None:
+        retention_period = 24
+    
+    prefix = config.get("prefix")
+    if prefix is None:
+        prefix = "elevai"
     
     pulumi.log.info(f"KVS config - enabled: {kvs_enabled}, retention: {retention_period}h, prefix: '{prefix}'")
     

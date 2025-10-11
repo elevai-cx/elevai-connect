@@ -57,12 +57,13 @@ def create_connect_instance(
     # Get and validate configuration
     instance_alias = config.get("instanceAlias")
     if not instance_alias:
-        raise ValueError("instanceAlias is required in Pulumi config")
+        raise ValueError("connect:instanceAlias is required in Pulumi config")
     
     validate_instance_alias(instance_alias)
     
     # Get configuration with defaults
     identity_management_type = config.get("identityManagementType") or "SAML"
+    
     inbound_calls_enabled = config.get_bool("inboundCallsEnabled")
     if inbound_calls_enabled is None:
         inbound_calls_enabled = True

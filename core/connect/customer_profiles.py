@@ -46,16 +46,26 @@ def create_customer_profiles_integration(
     Returns:
         Dictionary containing Customer Profiles resources, or None if disabled
     """
-    config = pulumi.Config("customer-profiles")
+    config = pulumi.Config("customerProfiles")
     
     # Check if customer profiles is enabled
-    if not config.get_bool("enabled"):
-        pulumi.log.info("Customer Profiles integration is disabled")
+    cp_enabled = config.get_bool("enabled")
+    if cp_enabled is None:
+        cp_enabled = False
+    
+    if not cp_enabled:
         return None
     
     # Get configuration with defaults
-    auto_association_type = config.get("auto-association-type") or "CREATE_LIMITED_PROFILES_AND_AUTO_ASSOCIATE"
-    error_queue_enabled = config.get_bool("error-queue") or False
+    auto_association_type = config.get("autoAssociationType") or "CREATE_LIMITED_PROFILES_AND_AUTO_ASSOCIATE"
+    
+    error_queue_enabled = config.get_bool("errorQueue")
+    if error_queue_enabled is None:
+        error_queue_enabled = False
+    
+    default_expiration_days = config.get_int("defaultExpirationDays")
+    if default_expiration_days is None:
+        default_expiration_days = 366
     
     # Validate auto association type
     valid_types = [
@@ -77,7 +87,7 @@ def create_customer_profiles_integration(
     
     if auto_association_type not in valid_types:
         raise ValueError(
-            f"Invalid auto-association-type: {auto_association_type}. "
+            f"Invalid autoAssociationType: {auto_association_type}. "
             f"Must be one of: {', '.join(valid_types)}"
         )
     
@@ -88,7 +98,7 @@ def create_customer_profiles_integration(
         error_queue, error_queue_arn = _create_error_queue(kms_key, tags)
     
     # Create Customer Profiles domain
-    domain = _create_customer_profiles_domain(kms_key, tags)
+    domain = _create_customer_profiles_domain(kms_key, tags, default_expiration_days)
     
     # Register manual setup step
     _register_manual_setup_step(auto_association_type, error_queue_enabled)
@@ -108,7 +118,8 @@ def create_customer_profiles_integration(
 
 def _create_customer_profiles_domain(
     kms_key: aws.kms.Key,
-    tags: Dict[str, str]
+    tags: Dict[str, str],
+    default_expiration_days: int
 ) -> aws.customerprofiles.Domain:
     """
     Create Customer Profiles domain with encryption.
@@ -116,14 +127,11 @@ def _create_customer_profiles_domain(
     Args:
         kms_key: KMS key for data encryption
         tags: Tags to apply to the domain
+        default_expiration_days: Default expiration in days
         
     Returns:
         Customer Profiles domain resource
     """
-    # Default expiration of 366 days (1 year + 1 day for leap years)
-    config = pulumi.Config("customer-profiles")
-    default_expiration_days = config.get_int("default-expiration-days") or 366
-    
     domain = aws.customerprofiles.Domain(
         "connect-profiles-domain",
         domain_name="connect-profiles-domain",

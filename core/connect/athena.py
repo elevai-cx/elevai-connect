@@ -48,7 +48,14 @@ def configure_athena_workgroup(
     config = pulumi.Config("athena")
     
     # Check if we should update the primary workgroup or create a new one
-    force_update = config.get_bool("forceUpdatePrimary") or False
+    force_update = config.get_bool("forceUpdatePrimary")
+    if force_update is None:
+        force_update = False
+    
+    # Get bytes scanned cutoff (default: 10GB)
+    bytes_scanned_cutoff = config.get_int("bytesScannedCutoff")
+    if bytes_scanned_cutoff is None:
+        bytes_scanned_cutoff = 10 * 1024 * 1024 * 1024  # 10GB
     
     # Build output location
     output_location = pulumi.Output.concat("s3://", athena_bucket.id, "/query-results/")
@@ -64,7 +71,7 @@ def configure_athena_workgroup(
                 kms_key_arn=kms_key.arn,
             ),
         ),
-        bytes_scanned_cutoff_per_query=config.get_int("bytesScannedCutoff") or 10 * 1024 * 1024 * 1024,  # 10GB default
+        bytes_scanned_cutoff_per_query=bytes_scanned_cutoff,
     )
     
     if workgroup_name == "primary":

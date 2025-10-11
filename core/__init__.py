@@ -107,7 +107,7 @@ def create_core_infrastructure(tags: Dict[str, str]) -> Dict[str, Any]:
         resources["qconnect"] = qconnect_resources
     
     # Create Customer Profiles integration (optional)
-    customer_profiles_config = pulumi.Config("customer-profiles")
+    customer_profiles_config = pulumi.Config("customerProfiles")
     if customer_profiles_config.get_bool("enabled") or False:
         customer_profiles_resources = create_customer_profiles_integration(
             connect_instance=connect_instance,

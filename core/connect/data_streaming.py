@@ -43,7 +43,7 @@ def create_data_streams(
         Dictionary with keys 'contact_records' and 'agent_events' containing
         Stream resources or None if disabled
     """
-    config = pulumi.Config("data-streaming")
+    config = pulumi.Config("dataStreaming")
     
     streams = {}
     
