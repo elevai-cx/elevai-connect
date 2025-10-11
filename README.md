@@ -325,9 +325,8 @@ For more details visit the [Monitoring Guide](docs/MONITORING_GUIDE.md)
 - Multi-tier budget alerts (50%, 80%, 100%)
 
 For detailed alarm documentation, see:
-- [Alarm Configuration Guide](core/alerting/ALARM_CONFIGURATION.md)
-- [Quick Reference](core/alerting/ALARM_QUICK_REFERENCE.md)
-- [New Connect Alarms](core/alerting/NEW_CONNECT_ALARMS.md)
+- [Monitoring Guide](docs/MONITORING_GUIDE.md)
+
 
 
 ## 🔒 Security & Compliance
