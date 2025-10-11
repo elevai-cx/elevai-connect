@@ -24,6 +24,7 @@ from .s3 import create_s3_buckets
 from .iam import create_iam_resources
 from .athena import configure_athena_workgroup, create_athena_named_queries
 from .customer_profiles import create_customer_profiles_integration
+from .kvs import configure_kinesis_video_streams
 
 __all__ = [
     'create_connect_instance',
@@ -33,4 +34,5 @@ __all__ = [
     'configure_athena_workgroup',
     'create_athena_named_queries',
     'create_customer_profiles_integration',
+    'configure_kinesis_video_streams',
 ]

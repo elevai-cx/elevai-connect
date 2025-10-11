@@ -73,11 +73,12 @@ def create_core_infrastructure(tags: Dict[str, str]) -> Dict[str, Any]:
     resources["s3_buckets"] = s3_buckets
     
     # Create Amazon Connect instance and associate S3 buckets
-    connect_instance, data_streams = create_connect_instance(tags, s3_buckets, kms_key)
+    connect_instance, data_streams, kvs_config = create_connect_instance(tags, s3_buckets, kms_key)
     resources["connect_instance"] = connect_instance
     resources["connect_instance_id"] = connect_instance.id
     resources["connect_instance_arn"] = connect_instance.arn
     resources["data_streams"] = data_streams
+    resources["kvs_config"] = kvs_config
     
     
     # Create Lambda functions

@@ -165,6 +165,57 @@ def create_parameter_store_items(
             tags
         )
     
+    # Kinesis Video Streams Configuration
+    # Note: Actual KVS streams are created on-demand by Amazon Connect during calls
+    # These parameters store the configuration used for stream creation
+    kvs_config = core_resources.get("kvs_config")
+    if kvs_config:
+        # Get KVS configuration values
+        kvs_pulumi_config = pulumi.Config("kinesis-video-stream")
+        
+        try:
+            kvs_config_dict = kvs_pulumi_config.require_object("")
+            kvs_enabled = kvs_config_dict.get("enabled", True)
+            kvs_prefix = kvs_config_dict.get("prefix", "elevai")
+            kvs_retention = kvs_config_dict.get("retentionPeriodHours", 24)
+        except:
+            # Fallback to individual keys
+            kvs_enabled = kvs_pulumi_config.get_bool("enabled")
+            if kvs_enabled is None:
+                kvs_enabled = True
+            
+            kvs_prefix = kvs_pulumi_config.get("prefix")
+            if kvs_prefix is None:
+                kvs_prefix = "elevai"
+            
+            kvs_retention = kvs_pulumi_config.get_int("retentionPeriodHours")
+            if kvs_retention is None:
+                kvs_retention = 24
+        
+        parameters["kvs_enabled"] = _create_parameter(
+            "kvs-enabled",
+            f"{prefix}/kinesis-video-stream/enabled",
+            str(kvs_enabled),
+            "Kinesis Video Streams enabled status for Amazon Connect",
+            tags
+        )
+        
+        parameters["kvs_prefix"] = _create_parameter(
+            "kvs-prefix",
+            f"{prefix}/kinesis-video-stream/prefix",
+            kvs_prefix,
+            "Prefix for Kinesis Video Stream names (streams created on-demand during calls)",
+            tags
+        )
+        
+        parameters["kvs_retention_hours"] = _create_parameter(
+            "kvs-retention-hours",
+            f"{prefix}/kinesis-video-stream/retention-hours",
+            str(kvs_retention),
+            "Kinesis Video Streams retention period in hours",
+            tags
+        )
+    
     # KMS Key Parameters
     kms_key = core_resources.get("kms_key")
     if kms_key:

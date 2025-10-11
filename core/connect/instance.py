@@ -18,7 +18,7 @@ Amazon Connect Instance - Main Orchestration
 Handles the creation and configuration of Amazon Connect instances.
 """
 
-from typing import Dict
+from typing import Dict, Optional
 import pulumi
 import pulumi_aws as aws
 import pulumi_command as command
@@ -28,6 +28,7 @@ from .storage import associate_s3_buckets
 from .logging import configure_log_retention
 from .origins import create_approved_origins
 from .data_streaming import create_data_streams, configure_instance_data_streaming
+from .kvs import configure_kinesis_video_streams
 from .data_lake import setup_analytics_data_lake, create_lake_formation_database, create_resource_links, _get_default_data_sets
 from .athena import configure_athena_workgroup, create_athena_named_queries
 from ..post_deployment_tracker import add_manual_step
@@ -38,7 +39,7 @@ def create_connect_instance(
     s3_buckets: Dict[str, aws.s3.Bucket],
     kms_key: aws.kms.Key,
     enable_data_lake: bool = True
-) -> tuple[aws.connect.Instance, Dict]:
+) -> tuple[aws.connect.Instance, Dict, Optional[aws.connect.InstanceStorageConfig]]:
     """
     Create an Amazon Connect instance with S3 storage associations and data streaming.
     
@@ -49,7 +50,7 @@ def create_connect_instance(
         enable_data_lake: Whether to enable analytics data lake (default: True)
         
     Returns:
-        Tuple of (Connect instance, data streams dictionary)
+        Tuple of (Connect instance, data streams dictionary, KVS config or None)
     """
     config = pulumi.Config("connect")
     
@@ -115,6 +116,9 @@ def create_connect_instance(
     
     # Configure data streaming for contact trace records and agent events
     configure_instance_data_streaming(connect_instance, data_streams)
+    
+    # Configure Kinesis Video Streams for live media streaming
+    kvs_config = configure_kinesis_video_streams(connect_instance, tags, kms_key)
     
     # Associate S3 buckets with Connect instance
     associate_s3_buckets(connect_instance, s3_buckets, kms_key)
@@ -185,4 +189,4 @@ def create_connect_instance(
             else:
                 pulumi.log.warn("Athena queries bucket not found - skipping Athena workgroup configuration")
     
-    return connect_instance, data_streams
+    return connect_instance, data_streams, kvs_config

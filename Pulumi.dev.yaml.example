@@ -198,6 +198,31 @@ config:
   athena:bytesScannedCutoff: "5368709120"  # Custom query size limit. 5GB
 
   # --------------------------------------------------------------------------
+  # KINESIS VIDEO STREAMS
+  # --------------------------------------------------------------------------
+  # Amazon Connect Kinesis Video Streams enables real-time audio and video
+  # streaming from customer interactions for recording, analytics, and monitoring.
+  #
+  # When enabled, Amazon Connect creates Kinesis Video Streams automatically
+  # for each active call, allowing you to:
+  # - Stream live audio for real-time sentiment analysis
+  # - Record customer conversations for quality monitoring
+  # - Integrate with ML services for transcription and analytics
+  # - Archive audio for compliance requirements
+  #
+  # Configuration:
+  # - enabled: True/False - Enable KVS for live media streaming (Default: True)
+  # - prefix: Prefix for KVS stream names (Default: "elevai")
+  # - retentionPeriodHours: Hours to retain video data (0 = no retention, max: 87600)
+  #
+  # Note: KVS is typically used for real-time streaming. For long-term storage,
+  # consider using S3 buckets with the recordings configuration above.
+  # --------------------------------------------------------------------------
+  kinesis-video-stream:enabled: True
+  kinesis-video-stream:prefix: "elevai"
+  kinesis-video-stream:retentionPeriodHours: 168        # 7 days
+
+  # --------------------------------------------------------------------------
   # DATA STREAMING (KINESIS)
   # --------------------------------------------------------------------------
   # Amazon Connect can stream contact trace records and agent events to 

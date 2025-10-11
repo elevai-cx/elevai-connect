@@ -20,6 +20,8 @@ To get started visit the [README](/docs/CLAUDE_CODE_SETUP.md).
 
 ![](/elevai-connect.drawio.png)
 
+## Features 
+
 ## 💡 Why This Project Exists
 
 Amazon Connect is a powerful cloud contact center (CCaaS) platform that lives within your AWS account. However, deploying Connect in production requires integrating numerous AWS services - S3, DynamoDB, Lambda, CloudWatch, IAM, Secrets Manager, and more.
