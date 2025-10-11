@@ -142,7 +142,7 @@ config:
   cloudwatch:logRetentionDays: 30                   # Default: 1 month
   
   # Optional: SAML metadata file path (only if using SAML)
-  # connect:samlMetadataFile: "./path/to/saml-metadata.xml"
+  # connect:samlMetadataFile: "./path/to/saml/metadata.xml"
   
   # --------------------------------------------------------------------------
   # APPROVED ORIGINS (CCP Embedding)

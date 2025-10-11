@@ -16,11 +16,8 @@ Pulumi.*.yaml
 *.pyc
 
 # SAML metadata - keep template but exclude actual metadata files
-# The template (saml-metadata.xml) is tracked, but any real metadata should not be
-custom/*-metadata.xml
-!custom/saml-metadata.xml
-custom/my-saml-metadata.xml
-custom/production-saml-metadata.xml
+# The template (saml/metadata.xml) is tracked
+!custom/saml/metadata.xml
 
 # Lambda build artifacts
 .pulumi/lambda-builds/

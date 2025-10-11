@@ -40,7 +40,7 @@ Amazon Connect is a powerful cloud contact center (CCaaS) platform that lives wi
 ## ⚡ Quick Highlights
 
 - ⏱️ **Deploy in minutes** - Simple YAML configuration, no complex coding required
-- 🏗️ **Complete infrastructure** - Amazon Connect, S3, KMS, Kinesis, DynamoDB, and more
+- 🏗️ **Complete infrastructure** - Amazon Connect, S3, KMS, Kinesis, Analytics data lake, and more
 - 🔐 **Enterprise SSO ready** - SAML 2.0 integration with your identity provider
 - 🤖 **AI-powered** - Amazon Q in Connect with automated document tagging and session management
 - 📊 **70+ monitoring alarms** - Proactive alerting for capacity, quality, and cost management
@@ -104,6 +104,21 @@ This project is ideal for:
 - Real-time suggestions during customer interactions
 - Folder-based content organization with metadata tagging
 
+### 📊 **Analytics Data Lake**
+- **Automated data lake setup** with AWS Lake Formation integration
+- **27 pre-configured resource links** to Amazon Connect analytics tables
+- **Auto-discovery** of shared databases via AWS RAM (Resource Access Manager)
+- **Athena workgroup** pre-configured for querying contact center data
+- **Idempotent deployments** - safe to run multiple times without errors
+- Query historical data including:
+  - Contact records and evaluations
+  - Agent statistics and performance metrics
+  - Queue metrics and routing profiles
+  - Contact Lens conversational analytics
+  - Bot conversations and intents
+  - Workforce management data (shifts, forecasts, schedules)
+- See the [Analytics Data Lake Guide](docs/ANALYTICS_DATA_LAKE.md) for detailed setup and query examples
+
 ### 🔐 **Security & Compliance**
 - SAML 2.0 authentication with external IdP integration (Okta, Azure AD, Google)
 - Encryption at rest and in transit for all data stores
@@ -165,7 +180,7 @@ connect:instanceAlias: your-unique-alias      # Must be globally unique
 connect:identityManagementType: SAML          # Options: SAML or CONNECT_MANAGED
 
 # 6. Save you SAML Metadata file in the path below (OPTIONAL - can be updated post deployment)
-connect:samlMetadataFile:  "./path/to/saml-metadata.xml"
+connect:samlMetadataFile:  "./path/to/saml/metadata.xml"
 
 # 6. Monthly budget limit (For email alerts)
 billing:monthlyBudgetLimit: "50"              # USD
@@ -395,11 +410,14 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 
 ## 📖 Documentation
 
+**📂 [Browse All Documentation Guides](docs/README.md)**
+
 ### Project Guides
 
 - 🔒 **[SECURITY.md](SECURITY.md)** - Security policy and vulnerability reporting
 - 📘 **[SAML Setup Guide](docs/SAML_SETUP_GUIDE.md)** - Complete SAML authentication configuration
 - 🤖 **[Amazon Q Setup Guide](docs/AMAZON_Q_SETUP.md)** - AI assistant configuration and management
+- 📊 **[Analytics Data Lake Guide](docs/ANALYTICS_DATA_LAKE.md)** - Query contact center data with SQL
 - 🔧 **[Custom Extensions Guide](docs/CUSTOM_EXTENSIONS_GUIDE.md)** - Extending with custom resources
 - 🔧 **[Parameter Store Guide](docs/PARAMETER_STORE_GUIDE.md)** - Extending with custom resources
 - 📊 **[Monitoring Guide](docs/MONITORING_GUIDE.md)** - CloudWatch alarms detailed setup

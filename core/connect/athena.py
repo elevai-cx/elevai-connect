@@ -19,6 +19,8 @@ Configures Athena workgroups for querying Connect analytics data.
 """
 
 from typing import Dict, Optional
+import os
+from pathlib import Path
 import pulumi
 import pulumi_aws as aws
 
@@ -89,13 +91,45 @@ def configure_athena_workgroup(
     return workgroup
 
 
+def _load_query_files(query_dir: str) -> Dict[str, str]:
+    """
+    Load all .txt query files from a directory.
+    
+    Args:
+        query_dir: Directory path containing query files
+        
+    Returns:
+        Dictionary mapping query names to query content
+    """
+    queries = {}
+    query_path = Path(query_dir)
+    
+    if not query_path.exists():
+        return queries
+    
+    for file_path in query_path.glob("*.txt"):
+        query_name = file_path.stem  # Filename without extension
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                query_content = f.read().strip()
+                queries[query_name] = query_content
+        except Exception as e:
+            pulumi.log.warn(f"Failed to load query file {file_path}: {e}")
+    
+    return queries
+
+
 def create_athena_named_queries(
     database_name: str,
     workgroup: aws.athena.Workgroup,
     tags: Dict[str, str] = None
 ) -> Dict[str, aws.athena.NamedQuery]:
     """
-    Create useful named queries for Connect data lake.
+    Create named queries for Connect data lake from query files.
+    
+    Loads queries from:
+    1. ./athena-queries/ (default queries)
+    2. ./custom/athena-queries/ (custom queries, if present)
     
     Args:
         database_name: Lake Formation database name
@@ -107,79 +141,46 @@ def create_athena_named_queries(
     """
     named_queries = {}
     
-    # Query 1: List all resource links
-    list_tables = aws.athena.NamedQuery(
-        "athena-query-list-tables",
-        name="Connect - List All Tables",
-        database=database_name,
-        workgroup=workgroup.name,
-        description="List all available Connect analytics tables",
-        query=f"SHOW TABLES IN {database_name}",
-    )
-    named_queries["list_tables"] = list_tables
+    # Get the directory containing this file
+    current_dir = Path(__file__).parent
     
-    # Query 2: Sample contact records
-    sample_contacts = aws.athena.NamedQuery(
-        "athena-query-sample-contacts",
-        name="Connect - Sample Contact Records",
-        database=database_name,
-        workgroup=workgroup.name,
-        description="View sample contact records from the last 7 days",
-        query=f"""
-SELECT 
-    contactid,
-    initiationtimestamp,
-    disconnecttimestamp,
-    channel,
-    initiationmethod
-FROM {database_name}.contact_record_link
-WHERE partition_0 >= date_format(current_date - interval '7' day, '%Y-%m-%d')
-LIMIT 100
-        """.strip(),
-    )
-    named_queries["sample_contacts"] = sample_contacts
+    # Load default queries
+    default_queries_dir = current_dir / "athena-queries"
+    default_queries = _load_query_files(str(default_queries_dir))
     
-    # Query 3: Agent performance summary
-    agent_summary = aws.athena.NamedQuery(
-        "athena-query-agent-summary",
-        name="Connect - Agent Performance Summary",
-        database=database_name,
-        workgroup=workgroup.name,
-        description="Daily agent performance metrics",
-        query=f"""
-SELECT 
-    date_parse(partition_0, '%Y-%m-%d') as date,
-    agentid,
-    COUNT(*) as total_contacts,
-    COUNT(CASE WHEN channel = 'VOICE' THEN 1 END) as voice_contacts,
-    COUNT(CASE WHEN channel = 'CHAT' THEN 1 END) as chat_contacts
-FROM {database_name}.contact_record_link
-WHERE partition_0 >= date_format(current_date - interval '30' day, '%Y-%m-%d')
-GROUP BY partition_0, agentid
-ORDER BY partition_0 DESC, total_contacts DESC
-        """.strip(),
-    )
-    named_queries["agent_summary"] = agent_summary
+    # Load custom queries (if they exist)
+    custom_queries_dir = current_dir / "custom" / "athena-queries"
+    custom_queries = _load_query_files(str(custom_queries_dir))
     
-    # Query 4: Contact Lens insights
-    contact_lens = aws.athena.NamedQuery(
-        "athena-query-contact-lens",
-        name="Connect - Contact Lens Insights",
-        database=database_name,
-        workgroup=workgroup.name,
-        description="Contact Lens conversational analytics insights",
-        query=f"""
-SELECT 
-    contactid,
-    conversationcharacteristics.sentiment.overallsentiment.label as overall_sentiment,
-    conversationcharacteristics.nontalktimepercentage,
-    conversationcharacteristics.talktimepercentage
-FROM {database_name}.contact_lens_conversational_analytics_link
-WHERE partition_0 >= date_format(current_date - interval '7' day, '%Y-%m-%d')
-LIMIT 100
-        """.strip(),
-    )
-    named_queries["contact_lens"] = contact_lens
+    # Merge queries (custom queries override defaults with same name)
+    all_queries = {**default_queries, **custom_queries}
+    
+    pulumi.log.info(f"Loading {len(all_queries)} Athena queries ({len(default_queries)} default, {len(custom_queries)} custom)")
+    
+    # Create named queries from loaded files
+    for query_name, query_template in all_queries.items():
+        # Replace database name placeholder
+        query_content = query_template.format(database_name=database_name)
+        
+        # Create a safe resource name (replace spaces and special chars with hyphens)
+        resource_name = f"athena-query-{query_name.lower().replace(' ', '-').replace('_', '-')}"
+        
+        # Determine if this is a custom query
+        is_custom = query_name in custom_queries
+        description_prefix = "[Custom] " if is_custom else ""
+        
+        named_query = aws.athena.NamedQuery(
+            resource_name,
+            name=f"Connect - {query_name}",
+            database=database_name,
+            workgroup=workgroup.name,
+            description=f"{description_prefix}{query_name}",
+            query=query_content,
+        )
+        
+        # Use sanitized name as key
+        query_key = query_name.lower().replace(' ', '_').replace('-', '_')
+        named_queries[query_key] = named_query
     
     pulumi.export("athena_named_queries", [q.name for q in named_queries.values()])
     

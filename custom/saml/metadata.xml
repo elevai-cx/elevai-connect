@@ -14,7 +14,7 @@ Once you have your metadata:
 2. Update your Pulumi config to point to this file:
    
    In Pulumi.dev.yaml:
-   connect:samlMetadataFile: "./custom/saml-metadata.xml"
+   connect:samlMetadataFile: "./custom/saml/metadata.xml"
 
 3. Run: pulumi up
 
