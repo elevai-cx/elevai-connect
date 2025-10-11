@@ -20,7 +20,41 @@ To get started visit the [README](/docs/CLAUDE_CODE_SETUP.md).
 
 ![](/elevai-connect.drawio.png)
 
-## Features 
+## Features
+
+This project aims to provide a core set of Amazon Connect features that can then be extended in 3 ways.
+
+1. By the user using the ARNs provided in Parameter Store to any IaC of your choosing
+2. By the user using the ./custom folder to develop customer features via Pulumi
+3. Through additional modules that will be developed over time.
+
+The current feature available in this version are detailed below. These gaps can be configured as you see fit (Console / IaC), the gaps will be resolved over time (Why not [Contribute](CONTRIBUTING.md))
+
+| Feature                              | Included |
+| ------------------------------------ | -------- |
+| Amazon Connect Instance              | ✅        |
+| Amazon Q                             | ✅        |
+| Customer Profiles                    | ✅        |
+| **Storage Configuration**            |          |
+| • Call recordings                    | ✅        |
+| • Chat transcripts                   | ✅        |
+| • Exported reports                   | ✅        |
+| • Attachments                        | ✅        |
+| • Screen recordings                  | ✅        |
+| • Contact evaluations                | ✅        |
+| • Email messages                     | ✅        |
+| • Live media streaming               | ✅        |
+| **Data Streaming**                   |          |
+| • Agent Trace                        | ✅        |
+| • Contact Records                    | ✅        |
+| Data Lake with Athena                | ✅        |
+| Approved origins                     | ✅        |
+| Forecasting, Capacity and Scheduling | ✅        |
+| Email Domain                         | ❌        |
+| Outbound Campaign                    | ❌        |
+| Tasks Integrations                   | ❌        |
+| Cases                                | ❌        |
+| External voice connector             | ❌        |
 
 ## 💡 Why This Project Exists
 
