@@ -134,7 +134,7 @@ git clone https://github.com/bloy.me.uk/elevai-connect.git
 cd elevai-connect
 
 # 2. Create and activate virtual environment
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # 3. Install dependencies
@@ -329,37 +329,6 @@ For detailed alarm documentation, see:
 - [Quick Reference](core/alerting/ALARM_QUICK_REFERENCE.md)
 - [New Connect Alarms](core/alerting/NEW_CONNECT_ALARMS.md)
 
-## 🤖 Amazon Q in Connect (AI Assistant)
-
-For more details visit the [Amazon Q Guide](docs/AMAZON_Q_GUIDE.md)
-
-Amazon Q provides real-time AI assistance to contact center agents with intelligent recommendations and knowledge base integration.
-
-**Key capabilities:**
-- 🔍 Real-time knowledge base search during interactions
-- 💡 AI-powered suggestions based on conversation context
-- 📚 Automated content tagging and organization
-- ⚡ Reduced handle time and improved accuracy
-
-**Quick configuration example:**
-```yaml
-qconnect:
-  enabled: true
-  assistantName: q-assistant
-  knowledgeBaseName: my-knowledge-base
-  contentTagging:
-    - folderName: sales/emea
-      tags:
-        Department: Sales
-        Region: EMEA
-```
-
-📚 **For complete setup instructions**, see the [Amazon Q Setup Guide](docs/AMAZON_Q_GUIDE.md) which covers:
-- Detailed configuration options
-- Knowledge base management and content organization
-- Content tagging strategies
-- Lambda functions for automated tagging
-- Best practices and troubleshooting
 
 ## 🔒 Security & Compliance
 
@@ -412,6 +381,12 @@ The `custom/` directory is designed for your organization-specific extensions an
    - S3 bucket names
    - Q Assistant IDs
    - Available to any application via AWS Systems Manager
+
+
+## Known limitations
+
+### Outbound Campaigns
+This needs to be enabled via the AWS Console due to no API being currently available for this.
 
 
 ## 🤝 Contributing

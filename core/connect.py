@@ -22,13 +22,16 @@ from typing import Dict, Optional, List
 import pulumi
 import pulumi_aws as aws
 import pulumi_aws_native as aws_native
+import pulumi_command as command
+import json
 import re
 
 
 def create_connect_instance(
     tags: Dict[str, str],
     s3_buckets: Dict[str, aws.s3.Bucket],
-    kms_key: aws.kms.Key
+    kms_key: aws.kms.Key,
+    enable_data_lake: bool = True
 ) -> tuple[aws.connect.Instance, aws.kinesis.FirehoseDeliveryStream, aws.s3.Bucket]:
     """
     Create an Amazon Connect instance with S3 storage associations.
@@ -37,6 +40,7 @@ def create_connect_instance(
         tags: Tags to apply to the instance
         s3_buckets: Dictionary of S3 buckets to associate with the instance (must include 'logging' bucket)
         kms_key: KMS key for data encryption
+        enable_data_lake: Whether to enable the Amazon Connect analytics data lake (default: True)
         
     Returns:
         Tuple of (Amazon Connect instance, Firehose delivery stream, Firehose S3 bucket)
@@ -127,6 +131,10 @@ def create_connect_instance(
     
     # Create approved origins for CCP embedding
     approved_origins = create_approved_origins(connect_instance)
+    
+    # Set up analytics data lake if enabled
+    if enable_data_lake:
+        data_lake_setup = setup_analytics_data_lake(connect_instance, tags=tags)
     
     return connect_instance, firehose, firehose_bucket
 
@@ -657,3 +665,97 @@ def create_contact_flow_logs_firehose(tags: Dict[str, str], kms_key: aws.kms.Key
     )
     
     return firehose, log_bucket
+
+
+def setup_analytics_data_lake(
+    connect_instance: aws.connect.Instance,
+    data_set_ids: Optional[List[str]] = None,
+    tags: Dict[str, str] = None
+) -> command.local.Command:
+    """
+    Associate Amazon Connect analytics data lake tables with the Connect instance.
+    
+    This uses the AWS CLI to call the batch-associate-analytics-data-set API,
+    which is not yet available as a native Pulumi resource.
+    
+    Args:
+        connect_instance: The Amazon Connect instance
+        data_set_ids: List of data set IDs to associate. If None, uses all available tables.
+        tags: Tags to apply (for metadata only, not directly applied to the association)
+        
+    Returns:
+        The Command resource that executes the AWS CLI command
+    """
+    # Default to all available tables if not specified
+    if data_set_ids is None:
+        data_set_ids = [
+            "contact_record",
+            "contact_lens_conversational_analytics",
+            "contact_statistic_record",
+            "agent_queue_statistic_record",
+            "agent_statistic_record",
+            "contact_evaluation_record",
+            "contact_flow_events",
+            "bot_conversations",
+            "bot_intents",
+            "bot_slots",
+            "routing_profiles",
+            "users",
+            "agent_hierarchy_groups",
+            "staff_shifts",
+            "shift_activities",
+            "staff_timeoff_intervals",
+            "staffing_group_forecast_groups",
+            "staff_timeoff_balance_changes",
+            "forecast_groups",
+            "long_term_forecasts",
+            "staff_shift_activities",
+            "shift_profiles",
+            "staffing_group_supervisors",
+            "short_term_forecasts",
+            "staffing_groups",
+            "staff_timeoffs",
+            "staff_scheduling_profile"
+        ]
+    
+    # Get current AWS account ID
+    current = aws.get_caller_identity()
+    account_id = current.account_id
+    
+    # Build the JSON input structure
+    input_data = pulumi.Output.all(
+        instance_id=connect_instance.id,
+        account_id=account_id
+    ).apply(lambda args: json.dumps({
+        "InstanceId": args["instance_id"],
+        "DataSetIds": data_set_ids,
+        "TargetAccountId": args["account_id"],
+    }, indent=2))
+    
+    # Create the AWS CLI command that writes JSON to a temp file then uses it
+    # This avoids shell escaping issues with nested quotes
+    cli_command = input_data.apply(
+        lambda json_input: (
+            f"TMPFILE=$(mktemp) && "
+            f"cat > $TMPFILE << 'EOF'\n{json_input}\nEOF\n"
+            f"aws connect batch-associate-analytics-data-set --cli-input-json file://$TMPFILE && "
+            f"rm -f $TMPFILE"
+        )
+    )
+    
+    # Create the command using Pulumi Command provider
+    data_lake_setup = command.local.Command(
+        "analytics-data-lake-setup",
+        create=cli_command,
+        # The delete command would disassociate the data sets
+        # For now, we'll leave it empty as you typically don't want to remove this
+        opts=pulumi.ResourceOptions(
+            depends_on=[connect_instance],
+            additional_secret_outputs=["stdout", "stderr"],
+        ),
+    )
+    
+    pulumi.export("analytics_data_lake_status", "configured")
+    pulumi.export("analytics_data_lake_tables", data_set_ids)
+    
+    return data_lake_setup
