@@ -47,7 +47,7 @@ config:
   
   # Optional: Provide your IdP metadata file path
   # If not provided, you'll configure this post-deployment
-  connect:samlMetadataFile: "./path/to/saml-metadata.xml"
+  connect:samlMetadataFile: "./path/to/saml/metadata.xml"
   
   # Other required settings
   connect:instanceAlias: your-unique-alias

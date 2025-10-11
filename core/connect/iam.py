@@ -22,6 +22,7 @@ from typing import Dict
 import pulumi
 import pulumi_aws as aws
 import json
+from ..post_deployment_tracker import add_manual_step
 
 
 def create_iam_resources(tags: Dict[str, str]) -> Dict[str, any]:
@@ -287,8 +288,15 @@ def create_saml_resources(tags: Dict[str, str]) -> Dict[str, any]:
             pulumi.log.warn("Falling back to placeholder metadata")
             saml_metadata = get_placeholder_saml_metadata()
     else:
-        pulumi.log.info("Using SAML placeholder metadata (update later via AWS Console or CLI)")
+        pulumi.log.info("Using SAML placeholder metadata")
         saml_metadata = get_placeholder_saml_metadata()
+        
+        # Register manual step to update SAML metadata
+        add_manual_step(
+            title="Update SAML Identity Provider metadata with your IdP's metadata",
+            doc_link="docs/POST_DEPLOYMENT_STEPS.md#2-saml-authentication-setup",
+            details={"Provider Name": "ConnectSAMLProvider"}
+        )
     
     # Create SAML Identity Provider
     saml_provider = aws.iam.SamlProvider(
