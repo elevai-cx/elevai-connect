@@ -65,8 +65,6 @@ def configure_kinesis_video_streams(
     if prefix is None:
         prefix = "elevai"
     
-    pulumi.log.info(f"KVS config - enabled: {kvs_enabled}, retention: {retention_period}h, prefix: '{prefix}'")
-    
     if not kvs_enabled:
         pulumi.log.info("Kinesis Video Streams disabled for Amazon Connect")
         return None
@@ -88,7 +86,5 @@ def configure_kinesis_video_streams(
         ),
         opts=pulumi.ResourceOptions(depends_on=[connect_instance, kms_key])
     )
-    
-    pulumi.log.info(f"Kinesis Video Streams configured for Amazon Connect with prefix '{prefix}' and {retention_period}h retention")
     
     return kvs_config
