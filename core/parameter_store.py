@@ -124,36 +124,46 @@ def create_parameter_store_items(
             tags
         )
     
-    # Firehose Parameters
-    firehose = core_resources.get("firehose")
-    if firehose:
-        parameters["firehose_arn"] = _create_parameter(
-            "firehose-arn",
-            f"{prefix}/kinesis/firehose/contact-records/arn",
-            firehose.arn,
-            "Kinesis Firehose ARN for contact records",
+    # Kinesis Data Streams Parameters
+    data_streams = core_resources.get("data_streams", {})
+    
+    # Contact Records Stream
+    contact_records_stream = data_streams.get("contact_records")
+    if contact_records_stream:
+        parameters["kinesis_contact_records_name"] = _create_parameter(
+            "kinesis-contact-records-name",
+            f"{prefix}/kinesis/stream/contact-records/name",
+            contact_records_stream.name,
+            "Kinesis stream name for contact records",
             tags
         )
         
-        # Get the S3 bucket associated with the Firehose
-        # The bucket is created in the same function as the Firehose
-        firehose_bucket = core_resources.get("firehose_bucket")
-        if firehose_bucket:
-            parameters["s3_contact_records_name"] = _create_parameter(
-                "s3-contact-records-name",
-                f"{prefix}/s3/contact-records/name",
-                firehose_bucket.id,
-                "S3 bucket name for contact records",
-                tags
-            )
-            
-            parameters["s3_contact_records_arn"] = _create_parameter(
-                "s3-contact-records-arn",
-                f"{prefix}/s3/contact-records/arn",
-                firehose_bucket.arn,
-                "S3 bucket ARN for contact records",
-                tags
-            )
+        parameters["kinesis_contact_records_arn"] = _create_parameter(
+            "kinesis-contact-records-arn",
+            f"{prefix}/kinesis/stream/contact-records/arn",
+            contact_records_stream.arn,
+            "Kinesis stream ARN for contact records",
+            tags
+        )
+    
+    # Agent Events Stream
+    agent_events_stream = data_streams.get("agent_events")
+    if agent_events_stream:
+        parameters["kinesis_agent_events_name"] = _create_parameter(
+            "kinesis-agent-events-name",
+            f"{prefix}/kinesis/stream/agent-events/name",
+            agent_events_stream.name,
+            "Kinesis stream name for agent events",
+            tags
+        )
+        
+        parameters["kinesis_agent_events_arn"] = _create_parameter(
+            "kinesis-agent-events-arn",
+            f"{prefix}/kinesis/stream/agent-events/arn",
+            agent_events_stream.arn,
+            "Kinesis stream ARN for agent events",
+            tags
+        )
     
     # KMS Key Parameters
     kms_key = core_resources.get("kms_key")

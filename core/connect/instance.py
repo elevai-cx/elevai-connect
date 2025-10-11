@@ -24,9 +24,10 @@ import pulumi_aws as aws
 import pulumi_command as command
 
 from .validation import validate_instance_alias
-from .storage import associate_s3_buckets, create_contact_flow_logs_firehose
+from .storage import associate_s3_buckets
 from .logging import configure_log_retention
 from .origins import create_approved_origins
+from .data_streaming import create_data_streams, configure_instance_data_streaming
 from .data_lake import setup_analytics_data_lake, create_lake_formation_database, create_resource_links, _get_default_data_sets
 from .athena import configure_athena_workgroup, create_athena_named_queries
 from ..post_deployment_tracker import add_manual_step
@@ -37,9 +38,9 @@ def create_connect_instance(
     s3_buckets: Dict[str, aws.s3.Bucket],
     kms_key: aws.kms.Key,
     enable_data_lake: bool = True
-) -> tuple[aws.connect.Instance, aws.kinesis.FirehoseDeliveryStream, aws.s3.Bucket]:
+) -> tuple[aws.connect.Instance, Dict]:
     """
-    Create an Amazon Connect instance with S3 storage associations.
+    Create an Amazon Connect instance with S3 storage associations and data streaming.
     
     Args:
         tags: Tags to apply to the instance
@@ -48,7 +49,7 @@ def create_connect_instance(
         enable_data_lake: Whether to enable analytics data lake (default: True)
         
     Returns:
-        Tuple of (Connect instance, Firehose stream, Firehose S3 bucket)
+        Tuple of (Connect instance, data streams dictionary)
     """
     config = pulumi.Config("connect")
     
@@ -77,15 +78,8 @@ def create_connect_instance(
     if contact_flow_logs_enabled is None:
         contact_flow_logs_enabled = True
     
-    # Validate required buckets
-    if "logging" not in s3_buckets:
-        raise ValueError("logging bucket must be provided in s3_buckets dictionary")
-    logging_bucket = s3_buckets["logging"]
-    
-    # Create Firehose BEFORE the Connect instance
-    firehose, firehose_bucket = create_contact_flow_logs_firehose(
-        tags, kms_key, logging_bucket
-    )
+    # Create Kinesis data streams BEFORE the Connect instance
+    data_streams = create_data_streams(tags, kms_key)
     
     # Create CloudWatch log group if logging is enabled
     log_group = None
@@ -93,7 +87,11 @@ def create_connect_instance(
         log_group = configure_log_retention(instance_alias, tags)
     
     # Prepare dependencies
-    depends_on_resources = [firehose]
+    depends_on_resources = []
+    if data_streams.get("contact_records"):
+        depends_on_resources.append(data_streams["contact_records"])
+    if data_streams.get("agent_events"):
+        depends_on_resources.append(data_streams["agent_events"])
     if log_group:
         depends_on_resources.append(log_group)
     
@@ -115,19 +113,8 @@ def create_connect_instance(
         doc_link="docs/POST_DEPLOYMENT_STEPS.md###1-enable-contact-flow-features",
     )
     
-    # Create storage config for contact trace records
-    aws.connect.InstanceStorageConfig(
-        "contact-trace-records",
-        instance_id=connect_instance.id,
-        resource_type="CONTACT_TRACE_RECORDS",
-        storage_config=aws.connect.InstanceStorageConfigStorageConfigArgs(
-            storage_type="KINESIS_FIREHOSE",
-            kinesis_firehose_config=aws.connect.InstanceStorageConfigStorageConfigKinesisFirehoseConfigArgs(
-                firehose_arn=firehose.arn,
-            ),
-        ),
-        opts=pulumi.ResourceOptions(depends_on=[connect_instance, firehose])
-    )
+    # Configure data streaming for contact trace records and agent events
+    configure_instance_data_streaming(connect_instance, data_streams)
     
     # Associate S3 buckets with Connect instance
     associate_s3_buckets(connect_instance, s3_buckets, kms_key)
@@ -138,7 +125,14 @@ def create_connect_instance(
     pulumi.export("connect_instance_status", connect_instance.status)
     pulumi.export("connect_instance_url", 
                  pulumi.Output.concat("https://", instance_alias, ".my.connect.aws"))
-    pulumi.export("firehose_arn", firehose.arn)
+    
+    # Export data streams if enabled
+    if data_streams.get("contact_records"):
+        pulumi.export("contact_records_stream_arn", data_streams["contact_records"].arn)
+        pulumi.export("contact_records_stream_name", data_streams["contact_records"].name)
+    if data_streams.get("agent_events"):
+        pulumi.export("agent_events_stream_arn", data_streams["agent_events"].arn)
+        pulumi.export("agent_events_stream_name", data_streams["agent_events"].name)
     
     # Create approved origins for CCP embedding
     approved_origins = create_approved_origins(connect_instance)
@@ -191,4 +185,4 @@ def create_connect_instance(
             else:
                 pulumi.log.warn("Athena queries bucket not found - skipping Athena workgroup configuration")
     
-    return connect_instance, firehose, firehose_bucket
+    return connect_instance, data_streams

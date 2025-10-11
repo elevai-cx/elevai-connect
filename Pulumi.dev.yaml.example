@@ -198,6 +198,41 @@ config:
   athena:bytesScannedCutoff: "5368709120"  # Custom query size limit. 5GB
 
   # --------------------------------------------------------------------------
+  # DATA STREAMING (KINESIS)
+  # --------------------------------------------------------------------------
+  # Amazon Connect can stream contact trace records and agent events to 
+  # Kinesis data streams for real-time processing and analytics.
+  #
+  # Configuration options:
+  # - enabled: True/False - Enable or disable the stream
+  # - type: "on-demand" or "provisioned"
+  #   * on-demand: AWS manages capacity automatically (recommended for variable workloads)
+  #   * provisioned: You specify shard count (use for predictable, high-volume workloads)
+  # - shards: Number of shards (only applicable for type: provisioned)
+  # - retention: Data retention period in days (1-7)
+  #
+  # Cost considerations:
+  # - On-demand: ~$0.04 per GB written + $0.04 per GB read
+  # - Provisioned: ~$0.015 per shard-hour + data transfer costs
+  # --------------------------------------------------------------------------
+  
+  # Contact Trace Records Stream
+  # Contains detailed information about customer contacts (calls, chats, tasks)
+  data-streaming:contactRecords:
+    enabled: False                              # Set to True to enable
+    type: "on-demand"                          # on-demand or provisioned
+    shards: 1                                  # Only used if type is provisioned
+    retention: 1                               # Days (1-7)
+  
+  # Agent Events Stream
+  # Contains real-time agent state changes and activity
+  data-streaming:agentEvents:
+    enabled: False                              # Set to True to enable
+    type: "on-demand"                          # on-demand or provisioned
+    shards: 1                                  # Only used if type is provisioned
+    retention: 1                               # Days (1-7)
+
+  # --------------------------------------------------------------------------
   # AMAZON Q IN CONNECT (QConnect)
   # --------------------------------------------------------------------------
   qconnect:enabled: True
