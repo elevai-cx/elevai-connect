@@ -1,0 +1,4 @@
+SELECT *
+FROM {database_name}.contact_record_link
+WHERE DATE(initiation_timestamp) >= DATE '2025-01-01'
+LIMIT 100

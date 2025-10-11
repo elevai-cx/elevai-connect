@@ -1,0 +1,7 @@
+SELECT 
+    contact_id,
+    sentiment_overall_score_customer,
+    sentiment_overall_score_agent
+FROM {database_name}.contact_lens_conversational_analytics_link
+WHERE DATE(disconnect_timestamp) >= DATE '2025-01-01'
+LIMIT 100

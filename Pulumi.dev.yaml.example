@@ -13,24 +13,25 @@ config:
   # --------------------------------------------------------------------------
   # ENVIRONMENT & AWS CONFIGURATION
   # --------------------------------------------------------------------------
-  environment:type: dev                    # dev, staging, prod, etc.
-  aws:region: us-east-1                    # Your AWS region
+  environment:type: dev  # dev, staging, prod, etc.
+  aws:region: us-east-1
   aws-native:region: us-east-1
+  aws-account-id: "000000000000"
 
   # --------------------------------------------------------------------------
   # ALERTING & NOTIFICATIONS
   # --------------------------------------------------------------------------
-  alerting:enabled: True
-  alerting:info_warning_email: "your-email@example.com"
-  alerting:error_email: "your-email@example.com"
+  alerting:enabled: true
+  alerting:info_warning_email: your-email@example.com
+  alerting:error_email: your-email@example.com
 
   # --------------------------------------------------------------------------
   # AWS BILLING ALERTS
   # --------------------------------------------------------------------------
-  billing:enabled: True
-  billing:monthlyBudgetLimit: "50"
+  billing:enabled: true
+  billing:monthlyBudgetLimit: 50
   billing:alertThresholds: [50, 80, 100]
-  billing:notificationEmail: "your-email@example.com"
+  billing:notificationEmail: your-email@example.com
 
   # --------------------------------------------------------------------------
   # CLOUDWATCH ALARM THRESHOLDS
@@ -124,76 +125,117 @@ config:
   # AMAZON CONNECT INSTANCE
   # --------------------------------------------------------------------------
   # ⚠️  WARNING: instanceAlias and identityManagementType CANNOT be changed once created!
+  connect:instanceAlias: your-unique-alias  # MUST BE UNIQUE globally
+  connect:identityManagementType: SAML      # SAML or CONNECT_MANAGED
+  connect:multiPartyConferenceEnabled: true
+  connect:contactFlowLogsEnabled: true
+  connect:contactLensEnabled: true
+  # Optional: SAML metadata file path (only if using SAML)
+  # connect:samlMetadataFile: ./path/to/saml/metadata.xml
   
-  connect:instanceAlias: your-unique-alias          # MUST BE UNIQUE globally
-  connect:identityManagementType: SAML              # SAML or CONNECT_MANAGED
-  connect:multiPartyConferenceEnabled: True
-  connect:contactFlowLogsEnabled: True
-  connect:contactLensEnabled: True
-  
+  # Approved origins for CCP embedding
+  connect:approvedOrigins:
+    - http://localhost:3000        # Local development
+    - https://your-app.example.com # Production
+
   # --------------------------------------------------------------------------
   # CLOUDWATCH LOG RETENTION
   # --------------------------------------------------------------------------
-  # Controls how long CloudWatch logs are retained for all resources
-  # (Lambda functions, Amazon Connect instance, etc.)
-  # Set to 0 for logs that never expire
-  # Common values: 7, 14, 30, 60, 90, 180, 365
-  cloudwatch:logRetentionDays: 30                   # Default: 1 month
-  
-  # Optional: SAML metadata file path (only if using SAML)
-  # connect:samlMetadataFile: "./path/to/saml-metadata.xml"
-  
-  # --------------------------------------------------------------------------
-  # APPROVED ORIGINS (CCP Embedding)
-  # --------------------------------------------------------------------------
-  # URLs that are allowed to embed the Amazon Connect Contact Control Panel (CCP).
-  # This is required when integrating the CCP widget into your web applications.
-  # 
-  # Requirements:
-  # - Production URLs MUST use https:// protocol
-  # - Local development can use http://localhost:PORT or http://127.0.0.1:PORT
-  # - Include the full domain (e.g., https://app.example.com, not app.example.com)
-  # - Add each application/environment that needs CCP access
-  # 
-  # Example: If your agents use the CCP from https://crm.yourcompany.com,
-  # add that URL to the list below.
-  # 
-  # Leave empty or comment out if you don't need to embed the CCP.
-  connect:approvedOrigins:
-    - "http://localhost:3000"            # Local development (React default)
-    - "https://your-app.example.com"    # Production
-    # Add more origins as needed for different environments/applications
+  cloudwatch:logRetentionDays: 30  # 0 = never expire; common: 7, 14, 30, 60, 90, 180, 365
 
   # --------------------------------------------------------------------------
   # S3 LIFECYCLE POLICIES
   # --------------------------------------------------------------------------
-  s3:archiveDays: "90"
-  s3:deletionDays: "365"
-  
-  s3:contactRecords.archiveDays: "90"
-  s3:contactRecords.deletionDays: "365"
-  s3:recordings.archiveDays: "90"
-  s3:recordings.deletionDays: "2555"              # 7 years for compliance
-  s3:chatTranscripts.archiveDays: "90"
-  s3:chatTranscripts.deletionDays: "365"
-  s3:exportedReports.archiveDays: "30"
-  s3:exportedReports.deletionDays: "180"
-  s3:attachments.archiveDays: "90"
-  s3:attachments.deletionDays: "365"
-  s3:screenRecordings.archiveDays: "90"
-  s3:screenRecordings.deletionDays: "365"
-  s3:contactEvaluations.archiveDays: "90"
-  s3:contactEvaluations.deletionDays: "1095"
-  s3:emailMessages.archiveDays: "90"
-  s3:emailMessages.deletionDays: "365"
+  s3:archiveDays: 90      # Default archive transition days
+  s3:deletionDays: 365    # Default deletion days
+  s3:recordings:
+    archiveDays: 90
+    deletionDays: 2555  # 7 years for compliance
+  s3:chatTranscripts:
+    archiveDays: 90
+    deletionDays: 365
+  s3:exportedReports:
+    archiveDays: 30
+    deletionDays: 180
+  s3:attachments:
+    archiveDays: 90
+    deletionDays: 365
+  s3:screenRecordings:
+    archiveDays: 90
+    deletionDays: 365
+  s3:contactEvaluations:
+    archiveDays: 90
+    deletionDays: 1095
+  s3:emailMessages:
+    archiveDays: 90
+    deletionDays: 365
+  s3:connectAthenaQueries:
+    archiveDays: 91
+    deletionDays: 90
+
+  # --------------------------------------------------------------------------
+  # AMAZON ATHENA
+  # --------------------------------------------------------------------------
+  athena:bytesScannedCutoff: 5368709120  # 5GB query size limit
+
+  # --------------------------------------------------------------------------
+  # KINESIS VIDEO STREAMS
+  # --------------------------------------------------------------------------
+  # Amazon Connect Kinesis Video Streams enables real-time audio and video
+  # streaming from customer interactions for recording, analytics, and monitoring.
+  #
+  # When enabled, Amazon Connect creates Kinesis Video Streams automatically
+  # for each active call, allowing you to:
+  # - Stream live audio for real-time sentiment analysis
+  # - Record customer conversations for quality monitoring
+  # - Integrate with ML services for transcription and analytics
+  # - Archive audio for compliance requirements
+  #
+  # Configuration:
+  # - enabled: true/false - Enable KVS for live media streaming (Default: true)
+  # - prefix: Prefix for KVS stream names (Default: "elevai")
+  # - retentionPeriodHours: Hours to retain video data (0 = no retention, max: 87600)
+  #
+  # Note: KVS is typically used for real-time streaming. For long-term storage,
+  # consider using S3 buckets with the recordings configuration above.
+  kinesisVideoStream:enabled: true
+  kinesisVideoStream:prefix: elevai
+  kinesisVideoStream:retentionPeriodHours: 168  # 7 days
+
+  # --------------------------------------------------------------------------
+  # DATA STREAMING (KINESIS)
+  # --------------------------------------------------------------------------
+  # Amazon Connect can stream contact trace records and agent events to 
+  # Kinesis data streams for real-time processing and analytics.
+  #
+  # Configuration options:
+  # - enabled: true/false - Enable or disable the stream
+  # - type: "on-demand" or "provisioned"
+  #   * on-demand: AWS manages capacity automatically (recommended for variable workloads)
+  #   * provisioned: You specify shard count (use for predictable, high-volume workloads)
+  # - shards: Number of shards (only applicable for type: provisioned)
+  # - retention: Data retention period in days (1-7)
+  #
+  # Cost considerations:
+  # - On-demand: ~$0.04 per GB written + $0.04 per GB read
+  # - Provisioned: ~$0.015 per shard-hour + data transfer costs
+  dataStreaming:contactRecords:
+    enabled: false
+    type: on-demand      # on-demand or provisioned
+    shards: 1           # Only used if type is provisioned
+    retention: 1        # Days (1-7)
+  dataStreaming:agentEvents:
+    enabled: false
+    type: on-demand      # on-demand or provisioned
+    shards: 1           # Only used if type is provisioned
+    retention: 1        # Days (1-7)
 
   # --------------------------------------------------------------------------
   # AMAZON Q IN CONNECT (QConnect)
   # --------------------------------------------------------------------------
-  qconnect:enabled: True
+  qconnect:enabled: true
   qconnect:assistantName: q-assistant
   qconnect:knowledgeBaseName: q-knowledgebase
-  
   qconnect:contentTagging:
     - folderName: sales/emea
       tags:
@@ -213,3 +255,38 @@ config:
         Department: Compliance
         ContentType: Policy
         Compliance: Required
+
+  # --------------------------------------------------------------------------
+  # CUSTOMER PROFILES
+  # --------------------------------------------------------------------------
+  # Amazon Connect Customer Profiles creates unified customer profiles by
+  # combining data from multiple applications and contact channels.
+  # 
+  # When enabled, this creates:
+  # - Customer Profiles domain (connect-profiles-domain)
+  # - Optional SQS error reporting queue
+  # - Integration with Amazon Connect instance
+  # - Parameter Store entries for external integration
+  #
+  # Cost: ~$50-200/month depending on call volume
+  customerProfiles:enabled: true
+  # Auto-association type controls how profiles are created and linked to contacts
+  # Options:
+  #   CREATE_LIMITED_PROFILES_AND_AUTO_ASSOCIATE - (Recommended/Default)
+  #     Automatically creates limited profiles from Contact Trace Records (CTRs)
+  #     and associates contacts with profiles. Best for most use cases.
+  #   
+  #   AUTO_ASSOCIATE_PROFILES_ONLY - 
+  #     Only associates contacts with existing profiles, doesn't create new ones.
+  #     Use when profiles are created from other sources (CRM, data warehouse).
+  #   
+  #   CREATE_INFERRED_PROFILES_ONLY - 
+  #     Creates inferred profiles without auto-association.
+  #     For advanced analytics and ML use cases.
+  customerProfiles:autoAssociationType: CREATE_LIMITED_PROFILES_AND_AUTO_ASSOCIATE
+  
+  # Enable SQS error reporting queue (Recommended for production)
+  customerProfiles:errorQueue: false
+  
+  # Profile expiration in days (max 1098 days)
+  customerProfiles:defaultExpirationDays: 366

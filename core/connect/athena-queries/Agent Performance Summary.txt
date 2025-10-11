@@ -1,0 +1,9 @@
+SELECT 
+    agent_id,
+    COUNT(*) as total_contacts,
+    COUNT(CASE WHEN channel = 'VOICE' THEN 1 END) as voice_contacts,
+    COUNT(CASE WHEN channel = 'CHAT' THEN 1 END) as chat_contacts
+FROM {database_name}.contact_record_link
+WHERE DATE(initiation_timestamp) >= DATE '2025-01-01'
+GROUP BY agent_id
+ORDER BY total_contacts DESC

@@ -38,24 +38,30 @@ def create_billing_alarms(
         alerting_infrastructure: AlertingInfrastructure instance for SNS topics
         
     Returns:
-        List of Budget resources created
+        Dictionary containing created budget resources and SNS topic
     """
     config = pulumi.Config("billing")
     
     # Check if billing alerts are enabled
-    if not config.get_bool("enabled"):
+    billing_enabled = config.get_bool("enabled")
+    if not billing_enabled:
         pulumi.log.info("Billing alerts are disabled in configuration")
         return {"budgets": [], "topic": None}
     
     # Get configuration values
-    monthly_limit = config.require("monthlyBudgetLimit")
+    monthly_limit = config.get_int("monthlyBudgetLimit")
+    if not monthly_limit:
+        raise ValueError("billing:monthlyBudgetLimit is required when billing:enabled is True")
+    
     thresholds = config.get_object("alertThresholds") or [50, 80, 100]
-    notification_email = config.require("notificationEmail")
+    
+    notification_email = config.get("notificationEmail")
+    if not notification_email:
+        raise ValueError("billing:notificationEmail is required when billing:enabled is True")
     
     resources = {"budgets": [], "topic": None}
     
     # Create SNS topic for budget notifications (must be in us-east-1)
-    # Using a separate provider for us-east-1
     us_east_1_provider = aws.Provider(
         "us-east-1-provider",
         region="us-east-1"
@@ -107,7 +113,7 @@ def create_billing_alarms(
     budget = aws.budgets.Budget(
         "monthly-spend-budget",
         budget_type="COST",
-        limit_amount=monthly_limit,
+        limit_amount=str(monthly_limit),  # Convert to string for API
         limit_unit="USD",
         time_unit="MONTHLY",
         notifications=notifications,

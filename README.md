@@ -20,6 +20,42 @@ To get started visit the [README](/docs/CLAUDE_CODE_SETUP.md).
 
 ![](/elevai-connect.drawio.png)
 
+## Features
+
+This project aims to provide a core set of Amazon Connect features that can then be extended in 3 ways.
+
+1. By the user using the ARNs provided in Parameter Store to any IaC of your choosing
+2. By the user using the ./custom folder to develop customer features via Pulumi
+3. Through additional modules that will be developed over time.
+
+The current feature available in this version are detailed below. These gaps can be configured as you see fit (Console / IaC), the gaps will be resolved over time (Why not [Contribute](CONTRIBUTING.md))
+
+| Feature                              | Included |
+| ------------------------------------ | -------- |
+| Amazon Connect Instance              | ✅        |
+| Amazon Q                             | ✅        |
+| Customer Profiles                    | ✅        |
+| **Storage Configuration**            |          |
+| • Call recordings                    | ✅        |
+| • Chat transcripts                   | ✅        |
+| • Exported reports                   | ✅        |
+| • Attachments                        | ✅        |
+| • Screen recordings                  | ✅        |
+| • Contact evaluations                | ✅        |
+| • Email messages                     | ✅        |
+| • Live media streaming               | ✅        |
+| **Data Streaming**                   |          |
+| • Agent Trace                        | ✅        |
+| • Contact Records                    | ✅        |
+| Data Lake with Athena                | ✅        |
+| Approved origins                     | ✅        |
+| Forecasting, Capacity and Scheduling | ✅        |
+| Email Domain                         | ❌        |
+| Outbound Campaign                    | ❌        |
+| Tasks Integrations                   | ❌        |
+| Cases                                | ❌        |
+| External voice connector             | ❌        |
+
 ## 💡 Why This Project Exists
 
 Amazon Connect is a powerful cloud contact center (CCaaS) platform that lives within your AWS account. However, deploying Connect in production requires integrating numerous AWS services - S3, DynamoDB, Lambda, CloudWatch, IAM, Secrets Manager, and more.
@@ -40,7 +76,7 @@ Amazon Connect is a powerful cloud contact center (CCaaS) platform that lives wi
 ## ⚡ Quick Highlights
 
 - ⏱️ **Deploy in minutes** - Simple YAML configuration, no complex coding required
-- 🏗️ **Complete infrastructure** - Amazon Connect, S3, KMS, Kinesis, DynamoDB, and more
+- 🏗️ **Complete infrastructure** - Amazon Connect, S3, KMS, Kinesis, Analytics data lake, and more
 - 🔐 **Enterprise SSO ready** - SAML 2.0 integration with your identity provider
 - 🤖 **AI-powered** - Amazon Q in Connect with automated document tagging and session management
 - 📊 **70+ monitoring alarms** - Proactive alerting for capacity, quality, and cost management
@@ -104,6 +140,21 @@ This project is ideal for:
 - Real-time suggestions during customer interactions
 - Folder-based content organization with metadata tagging
 
+### 📊 **Analytics Data Lake**
+- **Automated data lake setup** with AWS Lake Formation integration
+- **27 pre-configured resource links** to Amazon Connect analytics tables
+- **Auto-discovery** of shared databases via AWS RAM (Resource Access Manager)
+- **Athena workgroup** pre-configured for querying contact center data
+- **Idempotent deployments** - safe to run multiple times without errors
+- Query historical data including:
+  - Contact records and evaluations
+  - Agent statistics and performance metrics
+  - Queue metrics and routing profiles
+  - Contact Lens conversational analytics
+  - Bot conversations and intents
+  - Workforce management data (shifts, forecasts, schedules)
+- See the [Analytics Data Lake Guide](docs/ANALYTICS_DATA_LAKE.md) for detailed setup and query examples
+
 ### 🔐 **Security & Compliance**
 - SAML 2.0 authentication with external IdP integration (Okta, Azure AD, Google)
 - Encryption at rest and in transit for all data stores
@@ -134,7 +185,7 @@ git clone https://github.com/bloy.me.uk/elevai-connect.git
 cd elevai-connect
 
 # 2. Create and activate virtual environment
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # 3. Install dependencies
@@ -165,7 +216,7 @@ connect:instanceAlias: your-unique-alias      # Must be globally unique
 connect:identityManagementType: SAML          # Options: SAML or CONNECT_MANAGED
 
 # 6. Save you SAML Metadata file in the path below (OPTIONAL - can be updated post deployment)
-connect:samlMetadataFile:  "./path/to/saml-metadata.xml"
+connect:samlMetadataFile:  "./path/to/saml/metadata.xml"
 
 # 6. Monthly budget limit (For email alerts)
 billing:monthlyBudgetLimit: "50"              # USD
@@ -325,41 +376,9 @@ For more details visit the [Monitoring Guide](docs/MONITORING_GUIDE.md)
 - Multi-tier budget alerts (50%, 80%, 100%)
 
 For detailed alarm documentation, see:
-- [Alarm Configuration Guide](core/alerting/ALARM_CONFIGURATION.md)
-- [Quick Reference](core/alerting/ALARM_QUICK_REFERENCE.md)
-- [New Connect Alarms](core/alerting/NEW_CONNECT_ALARMS.md)
+- [Monitoring Guide](docs/MONITORING_GUIDE.md)
 
-## 🤖 Amazon Q in Connect (AI Assistant)
 
-For more details visit the [Amazon Q Guide](docs/AMAZON_Q_GUIDE.md)
-
-Amazon Q provides real-time AI assistance to contact center agents with intelligent recommendations and knowledge base integration.
-
-**Key capabilities:**
-- 🔍 Real-time knowledge base search during interactions
-- 💡 AI-powered suggestions based on conversation context
-- 📚 Automated content tagging and organization
-- ⚡ Reduced handle time and improved accuracy
-
-**Quick configuration example:**
-```yaml
-qconnect:
-  enabled: true
-  assistantName: q-assistant
-  knowledgeBaseName: my-knowledge-base
-  contentTagging:
-    - folderName: sales/emea
-      tags:
-        Department: Sales
-        Region: EMEA
-```
-
-📚 **For complete setup instructions**, see the [Amazon Q Setup Guide](docs/AMAZON_Q_GUIDE.md) which covers:
-- Detailed configuration options
-- Knowledge base management and content organization
-- Content tagging strategies
-- Lambda functions for automated tagging
-- Best practices and troubleshooting
 
 ## 🔒 Security & Compliance
 
@@ -414,6 +433,12 @@ The `custom/` directory is designed for your organization-specific extensions an
    - Available to any application via AWS Systems Manager
 
 
+## Known limitations
+
+### Outbound Campaigns
+This needs to be enabled via the AWS Console due to no API being currently available for this.
+
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
@@ -421,11 +446,14 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 
 ## 📖 Documentation
 
+**📂 [Browse All Documentation Guides](docs/README.md)**
+
 ### Project Guides
 
 - 🔒 **[SECURITY.md](SECURITY.md)** - Security policy and vulnerability reporting
 - 📘 **[SAML Setup Guide](docs/SAML_SETUP_GUIDE.md)** - Complete SAML authentication configuration
 - 🤖 **[Amazon Q Setup Guide](docs/AMAZON_Q_SETUP.md)** - AI assistant configuration and management
+- 📊 **[Analytics Data Lake Guide](docs/ANALYTICS_DATA_LAKE.md)** - Query contact center data with SQL
 - 🔧 **[Custom Extensions Guide](docs/CUSTOM_EXTENSIONS_GUIDE.md)** - Extending with custom resources
 - 🔧 **[Parameter Store Guide](docs/PARAMETER_STORE_GUIDE.md)** - Extending with custom resources
 - 📊 **[Monitoring Guide](docs/MONITORING_GUIDE.md)** - CloudWatch alarms detailed setup

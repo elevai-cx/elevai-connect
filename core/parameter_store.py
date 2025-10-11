@@ -124,36 +124,97 @@ def create_parameter_store_items(
             tags
         )
     
-    # Firehose Parameters
-    firehose = core_resources.get("firehose")
-    if firehose:
-        parameters["firehose_arn"] = _create_parameter(
-            "firehose-arn",
-            f"{prefix}/kinesis/firehose/contact-records/arn",
-            firehose.arn,
-            "Kinesis Firehose ARN for contact records",
+    # Kinesis Data Streams Parameters
+    data_streams = core_resources.get("data_streams", {})
+    
+    # Contact Records Stream
+    contact_records_stream = data_streams.get("contact_records")
+    if contact_records_stream:
+        parameters["kinesis_contact_records_name"] = _create_parameter(
+            "kinesis-contact-records-name",
+            f"{prefix}/kinesis/stream/contact-records/name",
+            contact_records_stream.name,
+            "Kinesis stream name for contact records",
             tags
         )
         
-        # Get the S3 bucket associated with the Firehose
-        # The bucket is created in the same function as the Firehose
-        firehose_bucket = core_resources.get("firehose_bucket")
-        if firehose_bucket:
-            parameters["s3_contact_records_name"] = _create_parameter(
-                "s3-contact-records-name",
-                f"{prefix}/s3/contact-records/name",
-                firehose_bucket.id,
-                "S3 bucket name for contact records",
-                tags
-            )
+        parameters["kinesis_contact_records_arn"] = _create_parameter(
+            "kinesis-contact-records-arn",
+            f"{prefix}/kinesis/stream/contact-records/arn",
+            contact_records_stream.arn,
+            "Kinesis stream ARN for contact records",
+            tags
+        )
+    
+    # Agent Events Stream
+    agent_events_stream = data_streams.get("agent_events")
+    if agent_events_stream:
+        parameters["kinesis_agent_events_name"] = _create_parameter(
+            "kinesis-agent-events-name",
+            f"{prefix}/kinesis/stream/agent-events/name",
+            agent_events_stream.name,
+            "Kinesis stream name for agent events",
+            tags
+        )
+        
+        parameters["kinesis_agent_events_arn"] = _create_parameter(
+            "kinesis-agent-events-arn",
+            f"{prefix}/kinesis/stream/agent-events/arn",
+            agent_events_stream.arn,
+            "Kinesis stream ARN for agent events",
+            tags
+        )
+    
+    # Kinesis Video Streams Configuration
+    # Note: Actual KVS streams are created on-demand by Amazon Connect during calls
+    # These parameters store the configuration used for stream creation
+    kvs_config = core_resources.get("kvs_config")
+    if kvs_config:
+        # Get KVS configuration values
+        kvs_pulumi_config = pulumi.Config("kinesis-video-stream")
+        
+        try:
+            kvs_config_dict = kvs_pulumi_config.require_object("")
+            kvs_enabled = kvs_config_dict.get("enabled", True)
+            kvs_prefix = kvs_config_dict.get("prefix", "elevai")
+            kvs_retention = kvs_config_dict.get("retentionPeriodHours", 24)
+        except:
+            # Fallback to individual keys
+            kvs_enabled = kvs_pulumi_config.get_bool("enabled")
+            if kvs_enabled is None:
+                kvs_enabled = True
             
-            parameters["s3_contact_records_arn"] = _create_parameter(
-                "s3-contact-records-arn",
-                f"{prefix}/s3/contact-records/arn",
-                firehose_bucket.arn,
-                "S3 bucket ARN for contact records",
-                tags
-            )
+            kvs_prefix = kvs_pulumi_config.get("prefix")
+            if kvs_prefix is None:
+                kvs_prefix = "elevai"
+            
+            kvs_retention = kvs_pulumi_config.get_int("retentionPeriodHours")
+            if kvs_retention is None:
+                kvs_retention = 24
+        
+        parameters["kvs_enabled"] = _create_parameter(
+            "kvs-enabled",
+            f"{prefix}/kinesis-video-stream/enabled",
+            str(kvs_enabled),
+            "Kinesis Video Streams enabled status for Amazon Connect",
+            tags
+        )
+        
+        parameters["kvs_prefix"] = _create_parameter(
+            "kvs-prefix",
+            f"{prefix}/kinesis-video-stream/prefix",
+            kvs_prefix,
+            "Prefix for Kinesis Video Stream names (streams created on-demand during calls)",
+            tags
+        )
+        
+        parameters["kvs_retention_hours"] = _create_parameter(
+            "kvs-retention-hours",
+            f"{prefix}/kinesis-video-stream/retention-hours",
+            str(kvs_retention),
+            "Kinesis Video Streams retention period in hours",
+            tags
+        )
     
     # KMS Key Parameters
     kms_key = core_resources.get("kms_key")
@@ -244,6 +305,46 @@ def create_parameter_store_items(
             tags
         )
     
+    # Customer Profiles Parameters (if enabled)
+    customer_profiles = core_resources.get("customer_profiles")
+    if customer_profiles:
+        domain = customer_profiles.get("domain")
+        if domain:
+            parameters["customer_profiles_domain_name"] = _create_parameter(
+                "customer-profiles-domain-name",
+                f"{prefix}/customer-profiles/domain/name",
+                domain.domain_name,
+                "Customer Profiles domain name",
+                tags
+            )
+            
+            parameters["customer_profiles_domain_arn"] = _create_parameter(
+                "customer-profiles-domain-arn",
+                f"{prefix}/customer-profiles/domain/arn",
+                domain.arn,
+                "Customer Profiles domain ARN",
+                tags
+            )
+        
+        # Error queue parameters (if enabled)
+        error_queue = customer_profiles.get("error_queue")
+        if error_queue:
+            parameters["customer_profiles_error_queue_name"] = _create_parameter(
+                "customer-profiles-error-queue-name",
+                f"{prefix}/customer-profiles/error-queue/name",
+                error_queue.name,
+                "Customer Profiles error reporting queue name",
+                tags
+            )
+            
+            parameters["customer_profiles_error_queue_arn"] = _create_parameter(
+                "customer-profiles-error-queue-arn",
+                f"{prefix}/customer-profiles/error-queue/arn",
+                error_queue.arn,
+                "Customer Profiles error reporting queue ARN",
+                tags
+            )
+    
     pulumi.log.info(f"Created {len(parameters)} Parameter Store items with prefix: {prefix}")
     
     return parameters
@@ -301,4 +402,4 @@ def export_parameter_store_info(parameters: Dict[str, aws.ssm.Parameter]) -> Non
     
     # Export a list of all parameter names
     parameter_names = [param.name for param in parameters.values()]
-    pulumi.export("parameter_store_names", parameter_names)
+    # pulumi.export("parameter_store_names", parameter_names)
