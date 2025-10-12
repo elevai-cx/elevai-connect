@@ -123,7 +123,7 @@ config:
 
   alarms:kinesisDataStreams:
     iteratorAgeMilliseconds:
-      threshold: 43200000  # 12 hours (50% of 24hr default retention)
+      threshold: 43200000  # 12 hours 
       period: 300
       evaluationPeriods: 2
     readThroughputExceeded:
