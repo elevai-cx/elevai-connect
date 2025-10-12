@@ -16,6 +16,11 @@
 Amazon Q Content Tagging
 
 Handles automatic tagging of knowledge base content using Lambda, SQS, and EventBridge.
+
+Naming Convention:
+- SQS: <stage>-sqs-<purpose>[-dlq]
+- Lambda: <stage>-lambda-<purpose>
+- IAM Role: <stage>-iam-role-<purpose>
 """
 
 from typing import Dict, List
@@ -61,9 +66,9 @@ def create_content_tagging_infrastructure(
     )
     
     # Create SQS queues with 30s delay
+    # Physical names: dev-sqs-knowledge-tagging, dev-sqs-knowledge-tagging-dlq
     sqs_queues = create_sqs_queue_with_dlq(
-        resource_name="q-knowledge-tagging-queue",
-        queue_name="q-knowledge-tagging-queue",
+        purpose="knowledge-tagging",
         tags=tags,
         kms_key=kms_key,
         visibility_timeout_seconds=360,  # 6x Lambda timeout
@@ -72,12 +77,13 @@ def create_content_tagging_infrastructure(
     )
     
     # Create IAM role for Lambda
+    # Physical names: dev-iam-role-knowledge-tagging, dev-iam-policy-knowledge-tagging
     policy_statements = _build_lambda_policy_statements(
         bucket, kms_key, sqs_queues
     )
     
     lambda_role, policy_attachments = create_lambda_role(
-        resource_name="q-knowledge-tagging-role",
+        purpose="knowledge-tagging",
         tags=tags,
         additional_policy_statements=policy_statements,
     )
@@ -97,8 +103,9 @@ def create_content_tagging_infrastructure(
     )
     
     # Create Lambda function
+    # Physical name: dev-lbd-knowledge-tagging
     lambda_function = create_lambda_with_requirements(
-        name="q-knowledge-tagging",
+        purpose="knowledge-tagging",
         lambda_dir="./lambda-code/content-tagger",
         iam_role=lambda_role,
         tags=tags,

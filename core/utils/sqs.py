@@ -16,16 +16,21 @@
 SQS Utilities
 
 Reusable SQS queue creation functions.
+
+Naming Convention: <stage>-sqs-<purpose>[-dlq]-<hash>
+Example: dev-sqs-knowledge-tagging-abc123f
+Resource Type: sqs (80 char limit)
 """
 
 from typing import Dict, Optional
 import pulumi
 import pulumi_aws as aws
 
+from .naming import create_name, create_logical_name
+
 
 def create_sqs_queue(
-    resource_name: str,
-    queue_name: str,
+    purpose: str,
     tags: Dict[str, str],
     kms_key: aws.kms.Key,
     visibility_timeout_seconds: int = 300,
@@ -36,9 +41,14 @@ def create_sqs_queue(
     """
     Create an SQS queue with encryption and standard configuration.
     
+    Naming convention: <stage>-sqs-<purpose>-<hash>
+    Example: dev-sqs-knowledge-tagging-abc123f
+    
+    The logical name includes the stage prefix, and Pulumi automatically
+    appends a hash suffix for uniqueness.
+    
     Args:
-        resource_name: Pulumi resource name
-        queue_name: Name for the SQS queue
+        purpose: Descriptive purpose (e.g., 'knowledge-tagging', 'customer-events')
         tags: Tags to apply to the queue
         kms_key: KMS key for encryption
         visibility_timeout_seconds: Visibility timeout (default: 300s / 5min)
@@ -49,24 +59,29 @@ def create_sqs_queue(
     Returns:
         SQS queue resource
     """
+    # Include stage in logical name so Pulumi adds hash suffix
+    # Logical: dev-sqs-knowledge-tagging
+    # Physical: dev-sqs-knowledge-tagging-abc123f (Pulumi adds hash)
+    stage = pulumi.get_stack()
+    logical_name = f"{stage}-sqs-{purpose}"
+    
     queue = aws.sqs.Queue(
-        resource_name,
-        name=queue_name,
+        logical_name,
+        # NO name parameter - let Pulumi add hash to logical name
         delay_seconds=delay_seconds,
         visibility_timeout_seconds=visibility_timeout_seconds,
         message_retention_seconds=message_retention_seconds,
         kms_master_key_id=kms_key.id,
         kms_data_key_reuse_period_seconds=300,
         redrive_policy=redrive_policy,
-        tags={**tags, "Name": queue_name},
+        tags={**tags, "Purpose": purpose},
     )
     
     return queue
 
 
 def create_sqs_queue_with_dlq(
-    resource_name: str,
-    queue_name: str,
+    purpose: str,
     tags: Dict[str, str],
     kms_key: aws.kms.Key,
     visibility_timeout_seconds: int = 300,
@@ -78,13 +93,16 @@ def create_sqs_queue_with_dlq(
     """
     Create an SQS queue with a dead-letter queue (DLQ).
     
-    This creates two queues:
-    - Main queue with redrive policy
-    - DLQ for failed messages
+    This creates two queues with Pulumi auto-generated hash suffixes:
+    - Main queue: <stage>-sqs-<purpose>-<hash>
+    - DLQ: <stage>-sqs-<purpose>-dlq-<hash>
+    
+    Examples:
+    - dev-sqs-knowledge-tagging-abc123f
+    - dev-sqs-knowledge-tagging-dlq-abc123f
     
     Args:
-        resource_name: Base Pulumi resource name
-        queue_name: Base name for the queues
+        purpose: Descriptive purpose (e.g., 'knowledge-tagging')
         tags: Tags to apply to queues
         kms_key: KMS key for encryption
         visibility_timeout_seconds: Visibility timeout for main queue
@@ -96,13 +114,20 @@ def create_sqs_queue_with_dlq(
     Returns:
         Dictionary with 'main_queue' and 'dlq' keys
     """
-    # Create DLQ first
-    dlq = create_sqs_queue(
-        resource_name=f"{resource_name}-dlq",
-        queue_name=f"{queue_name}-dlq",
-        tags={**tags, "Purpose": "DeadLetterQueue"},
-        kms_key=kms_key,
+    # Generate DLQ logical name with stage and suffix
+    # Logical: dev-sqs-knowledge-tagging-dlq
+    # Physical: dev-sqs-knowledge-tagging-dlq-abc123f (Pulumi adds hash)
+    stage = pulumi.get_stack()
+    dlq_logical = f"{stage}-sqs-{purpose}-dlq"
+    
+    # Create DLQ
+    dlq = aws.sqs.Queue(
+        dlq_logical,
+        # NO name parameter - let Pulumi add hash
         message_retention_seconds=dlq_retention_seconds,
+        kms_master_key_id=kms_key.id,
+        kms_data_key_reuse_period_seconds=300,
+        tags={**tags, "Purpose": f"{purpose}-dlq", "Type": "DeadLetterQueue"},
     )
     
     # Create main queue with DLQ redrive policy
@@ -114,8 +139,7 @@ def create_sqs_queue_with_dlq(
     )
     
     main_queue = create_sqs_queue(
-        resource_name=resource_name,
-        queue_name=queue_name,
+        purpose=purpose,
         tags=tags,
         kms_key=kms_key,
         visibility_timeout_seconds=visibility_timeout_seconds,

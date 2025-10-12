@@ -22,6 +22,8 @@ and integration with Amazon Connect.
 from typing import Dict, Optional
 import pulumi
 import pulumi_aws as aws
+
+from ..utils.naming import create_name, create_logical_name
 from ..post_deployment_tracker import add_manual_step
 
 
@@ -124,6 +126,9 @@ def _create_customer_profiles_domain(
     """
     Create Customer Profiles domain with encryption.
     
+    Naming Pattern: <stage>-cp-domain
+    Example: dev-cp-domain
+    
     Args:
         kms_key: KMS key for data encryption
         tags: Tags to apply to the domain
@@ -132,12 +137,21 @@ def _create_customer_profiles_domain(
     Returns:
         Customer Profiles domain resource
     """
+    domain_name = create_name("connect", "profiles-domain")
+    logical_name = create_logical_name("connect", "profiles-domain")
+    
     domain = aws.customerprofiles.Domain(
-        "connect-profiles-domain",
-        domain_name="connect-profiles-domain",
+        logical_name,
+        domain_name=domain_name,
         default_expiration_days=default_expiration_days,
-        tags={**tags, "Name": "connect-profiles-domain"},
-        opts=pulumi.ResourceOptions(depends_on=[kms_key])
+        tags={**tags, "Name": domain_name},
+        opts=pulumi.ResourceOptions(
+            depends_on=[kms_key],
+            ignore_changes=[
+                "default_encryption_key",
+                "defaultEncryptionKey",  # Try both snake_case and camelCase
+            ]
+        )
     )
     
     return domain
@@ -157,20 +171,21 @@ def _create_error_queue(
     Returns:
         Tuple of (SQS queue, queue ARN output)
     """
-    # Create dead letter queue first
+    stage = pulumi.get_stack()
+    dlq_logical = f"{stage}-sqs-customer-profiles-error-dlq"
+    
     dlq = aws.sqs.Queue(
-        "customer-profiles-error-dlq",
-        name="connect-customer-profiles-error-dlq",
+        dlq_logical,
         message_retention_seconds=1209600,  # 14 days
         kms_master_key_id=kms_key.id,
         kms_data_key_reuse_period_seconds=300,
-        tags={**tags, "Name": "connect-customer-profiles-error-dlq"},
+        tags={**tags, "Purpose": "customer-profiles-error-dlq", "Type": "DeadLetterQueue"},
     )
     
-    # Create main error queue
+    error_queue_logical = f"{stage}-sqs-customer-profiles-error"
+    
     error_queue = aws.sqs.Queue(
-        "customer-profiles-error-queue",
-        name="connect-customer-profiles-error-queue",
+        error_queue_logical,
         message_retention_seconds=1209600,  # 14 days
         kms_master_key_id=kms_key.id,
         kms_data_key_reuse_period_seconds=300,
@@ -180,7 +195,7 @@ def _create_error_queue(
                 "maxReceiveCount": 3
             })
         ),
-        tags={**tags, "Name": "connect-customer-profiles-error-queue"},
+        tags={**tags, "Purpose": "customer-profiles-error"},
         opts=pulumi.ResourceOptions(depends_on=[dlq])
     )
     

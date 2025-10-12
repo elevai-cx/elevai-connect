@@ -58,10 +58,6 @@ def setup_analytics_data_lake(
         connect_instance, data_lake_setup, tags
     )
     
-    # Exports
-    pulumi.export("analytics_data_lake_status", "configured")
-    pulumi.export("analytics_data_lake_tables", data_set_ids)
-    
     return data_lake_setup, ram_acceptance, discover_db
 
 

@@ -27,7 +27,8 @@ import pulumi_aws as aws
 def create_logging_bucket(
     resource_name: str, 
     tags: Dict[str, str], 
-    kms_key: aws.kms.Key
+    kms_key: aws.kms.Key,
+    bucket_name: Optional[str] = None
 ) -> aws.s3.Bucket:
     """
     Create a dedicated S3 bucket for storing access logs.
@@ -39,22 +40,26 @@ def create_logging_bucket(
         resource_name: Pulumi resource name
         tags: Tags to apply to the bucket
         kms_key: KMS key for bucket encryption
+        bucket_name: Optional physical bucket name (if not provided, AWS auto-generates)
         
     Returns:
         S3 bucket for access logs
     """
-    bucket = aws.s3.Bucket(
-        resource_name,
-        object_lock_enabled=True,
-        tags={**tags, "Purpose": "AccessLogs"},
-    )
+    bucket_args = {
+        "object_lock_enabled": True,
+        "tags": {**tags, "Purpose": "AccessLogs"},
+    }
+    if bucket_name:
+        bucket_args["bucket"] = bucket_name
+    
+    bucket = aws.s3.Bucket(resource_name, **bucket_args)
     
     aws.s3.BucketVersioning(
         f"{resource_name}-versioning",
         bucket=bucket.id,
         versioning_configuration=aws.s3.BucketVersioningVersioningConfigurationArgs(
             status="Enabled",
-        ),
+        )
     )
     
     aws.s3.BucketServerSideEncryptionConfiguration(
@@ -68,7 +73,7 @@ def create_logging_bucket(
                 ),
                 bucket_key_enabled=True,
             )
-        ],
+        ]
     )
     
     aws.s3.BucketPublicAccessBlock(
@@ -77,13 +82,13 @@ def create_logging_bucket(
         block_public_acls=True,
         block_public_policy=True,
         ignore_public_acls=True,
-        restrict_public_buckets=True,
+        restrict_public_buckets=True
     )
     
     current = aws.get_caller_identity()
     region = aws.get_region()
     
-    bucket_policy = aws.s3.BucketPolicy(
+    aws.s3.BucketPolicy(
         f"{resource_name}-policy",
         bucket=bucket.id,
         policy=pulumi.Output.all(
@@ -116,7 +121,7 @@ def create_logging_bucket(
                     }
                 ]
             })
-        ),
+        )
     )
     
     aws.s3.BucketLifecycleConfiguration(
@@ -139,7 +144,7 @@ def create_logging_bucket(
                     noncurrent_days=90,
                 ),
             )
-        ],
+        ]
     )
     
     return bucket
@@ -156,6 +161,7 @@ def create_secure_s3_bucket(
     enable_object_lock: bool = True,
     additional_policy_statements: Optional[list] = None,
     lifecycle_rules: Optional[list] = None,
+    bucket_name: Optional[str] = None,
 ) -> aws.s3.Bucket:
     """
     Create a secure S3 bucket with encryption, versioning, and lifecycle policies.
@@ -179,22 +185,26 @@ def create_secure_s3_bucket(
         enable_object_lock: Enable Object Lock (default: True)
         additional_policy_statements: Optional additional bucket policy statements
         lifecycle_rules: Optional custom lifecycle rules (overrides archive/deletion)
+        bucket_name: Optional physical bucket name (if not provided, AWS auto-generates)
         
     Returns:
         S3 bucket resource
     """
-    bucket = aws.s3.Bucket(
-        resource_name,
-        object_lock_enabled=enable_object_lock,
-        tags={**tags, "Purpose": purpose},
-    )
+    bucket_args = {
+        "object_lock_enabled": enable_object_lock,
+        "tags": {**tags, "Purpose": purpose},
+    }
+    if bucket_name:
+        bucket_args["bucket"] = bucket_name
+    
+    bucket = aws.s3.Bucket(resource_name, **bucket_args)
     
     aws.s3.BucketVersioning(
         f"{resource_name}-versioning",
         bucket=bucket.id,
         versioning_configuration=aws.s3.BucketVersioningVersioningConfigurationArgs(
             status="Enabled",
-        ),
+        )
     )
     
     aws.s3.BucketServerSideEncryptionConfiguration(
@@ -208,7 +218,7 @@ def create_secure_s3_bucket(
                 ),
                 bucket_key_enabled=True,
             )
-        ],
+        ]
     )
     
     aws.s3.BucketPublicAccessBlock(
@@ -217,7 +227,7 @@ def create_secure_s3_bucket(
         block_public_acls=True,
         block_public_policy=True,
         ignore_public_acls=True,
-        restrict_public_buckets=True,
+        restrict_public_buckets=True
     )
     
     # Build bucket policy statements
@@ -246,7 +256,7 @@ def create_secure_s3_bucket(
     aws.s3.BucketPolicy(
         f"{resource_name}-policy",
         bucket=bucket.id,
-        policy=bucket.arn.apply(build_policy),
+        policy=bucket.arn.apply(build_policy)
     )
     
     # Apply lifecycle rules
@@ -272,7 +282,7 @@ def create_secure_s3_bucket(
     aws.s3.BucketLifecycleConfiguration(
         f"{resource_name}-lifecycle",
         bucket=bucket.id,
-        rules=rules,
+        rules=rules
     )
     
     # Enable access logging if logging bucket provided
@@ -281,7 +291,7 @@ def create_secure_s3_bucket(
             f"{resource_name}-logging",
             bucket=bucket.id,
             target_bucket=logging_bucket.id,
-            target_prefix=f"{resource_name}/",
+            target_prefix=f"{resource_name}/"
         )
     
     return bucket

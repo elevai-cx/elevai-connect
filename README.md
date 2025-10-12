@@ -504,3 +504,11 @@ Built with ❤️ by ELEVAI using:
 ---
 
 **Ready to deploy world-class contact center infrastructure?** Get started in minutes with production-ready monitoring, AI assistance, and security built-in.
+
+
+# Deleting the stack
+
+1. Empty all S3 buckets
+2. Athena Workgroup needs to be manually deleted? (TODO)
+3. Delete any LEX bots created via the AWS Console
+4. Run `pulumi destroy`

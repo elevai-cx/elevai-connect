@@ -24,6 +24,7 @@ import pulumi_aws as aws
 import pulumi_command as command
 
 from core.utils import create_secure_s3_bucket
+from ..utils.naming import create_logical_name
 from .knowledge_base import (
     create_assistant,
     create_data_integration,
@@ -61,8 +62,13 @@ def create_qconnect_integration(
     """
     config = pulumi.Config("qconnect")
     
-    assistant_name = config.get("assistantName") or "connect-q-assistant"
-    knowledge_base_name = config.get("knowledgeBaseName") or "connect-knowledge-base"
+    base_assistant_name = config.get("assistantName") or "q-assistant"
+    base_kb_name = config.get("knowledgeBaseName") or "q-knowledge-base"
+    base_integration_name = config.get("dataIntegrationName") or base_kb_name
+    
+    assistant_name = create_logical_name("qconnect", base_assistant_name)
+    knowledge_base_name = create_logical_name("qconnect", base_kb_name)
+    data_integration_name = create_logical_name("qconnect", base_integration_name)
     
     # Create Assistant
     assistant = create_assistant(assistant_name, kms_key, tags)
@@ -74,7 +80,7 @@ def create_qconnect_integration(
     
     # Create DataIntegration (depends on bucket policy)
     data_integration = create_data_integration(
-        knowledge_base_name,
+        data_integration_name,
         knowledge_base_s3_bucket,
         kms_key,
         tags,
@@ -207,6 +213,9 @@ def create_qconnect_knowledge_bucket(
     
     Uses utility function for consistency with other buckets.
     
+    Naming Pattern: <stage>-s3-<purpose>-<hash>
+    Example: dev-s3-q-knowledge-abc123f
+    
     Args:
         tags: Tags to apply
         kms_key: KMS key
@@ -225,13 +234,16 @@ def create_qconnect_knowledge_bucket(
         )
     ]
     
+    logical_name = create_logical_name("s3", "q-knowledge")
+    
     bucket = create_secure_s3_bucket(
-        resource_name="q-knowledge-bucket",
+        resource_name=logical_name,
         purpose="QConnectKnowledgeBase",
         tags=tags,
         kms_key=kms_key,
         logging_bucket=logging_bucket,
         lifecycle_rules=lifecycle_rules,
+        # NO bucket_name parameter - let Pulumi add hash
     )
     
     return bucket

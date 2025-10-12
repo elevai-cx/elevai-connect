@@ -22,6 +22,14 @@ from .s3 import create_secure_s3_bucket, create_logging_bucket
 from .sqs import create_sqs_queue_with_dlq, create_sqs_queue
 from .lambda_utils import create_lambda_with_requirements
 from .iam import create_lambda_role
+from .naming import (
+    create_name,
+    create_logical_name,
+    get_stage,
+    validate_length,
+    get_limit,
+    check_name_fits,
+)
 
 __all__ = [
     'create_secure_s3_bucket',
@@ -30,4 +38,10 @@ __all__ = [
     'create_sqs_queue',
     'create_lambda_with_requirements',
     'create_lambda_role',
+    'create_name',
+    'create_logical_name',
+    'get_stage',
+    'validate_length',
+    'get_limit',
+    'check_name_fits',
 ]
