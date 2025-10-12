@@ -28,7 +28,7 @@ This project aims to provide a core set of Amazon Connect features that can then
 2. By the user using the ./custom folder to develop customer features via Pulumi
 3. Through additional modules that will be developed over time.
 
-The current feature available in this version are detailed below. These gaps can be configured as you see fit (Console / IaC), the gaps will be resolved over time (Why not [Contribute](CONTRIBUTING.md))
+The current feature available in this version are detailed below. These gaps can be configured as you see fit (Console / IaC), the gaps will be resolved over time when the resource can be configured via IaC (See an improvement? Why not [Contribute](CONTRIBUTING.md))
 
 | Feature                              | Included |
 | ------------------------------------ | -------- |
@@ -55,6 +55,7 @@ The current feature available in this version are detailed below. These gaps can
 | Tasks Integrations                   | ❌        |
 | Cases                                | ❌        |
 | External voice connector             | ❌        |
+| Traffic Distribution (Multi-region)  | ❌        |
 
 ## 💡 Why This Project Exists
 
