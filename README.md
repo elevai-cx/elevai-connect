@@ -193,7 +193,7 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # 4. Configure Pulumi
-pulumi login  # Use Pulumi Cloud or local backend
+pulumi login  # Use Pulumi Cloud or local backend. S3 can be used: https://www.pulumi.com/docs/iac/concepts/state-and-backends/#using-a-diy-backend
 
 # 5. Set up your configuration file
 cp Pulumi.dev.yaml.example Pulumi.dev.yaml
