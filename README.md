@@ -12,7 +12,7 @@ A comprehensive, project for deploying Amazon Connect contact centers with Pytho
 ## PREVIEW: Deploy with Claude Code and MCP
 AI has turned ideas into reality and with elevai-connect and MCP we re-imagine the developer experience. By using Claude Code you are able to interact using natural language to set-up and configure your Amazon Connect instance.
 
-Once you haver your instance, you will find workshops within this project that AI can walk you through to build great experiences and supercharge your development.
+Once you have your instance, you will find workshops within this project that AI can walk you through to build great experiences and supercharge your development.
 
 To get started visit the [README](/docs/CLAUDE_CODE_SETUP.md).
 
@@ -24,11 +24,11 @@ To get started visit the [README](/docs/CLAUDE_CODE_SETUP.md).
 
 This project aims to provide a core set of Amazon Connect features that can then be extended in 3 ways.
 
-1. By the user using the ARNs provided in Parameter Store to any IaC of your choosing
-2. By the user using the ./custom folder to develop customer features via Pulumi
+1. By using the ARNs provided in Parameter Store to any IaC of your choosing
+2. By using the ./custom folder to develop customer features via Pulumi
 3. Through additional modules that will be developed over time.
 
-The current feature available in this version are detailed below. These gaps can be configured as you see fit (Console / IaC), the gaps will be resolved over time when the resource can be configured via IaC (See an improvement? Why not [Contribute](CONTRIBUTING.md))
+The current features available in this version are detailed below. These gaps can be configured as you see fit (Console / IaC), the gaps will be resolved over time when the resource can be configured via IaC (See an improvement? Why not [Contribute](CONTRIBUTING.md))
 
 | Feature                              | Included |
 | ------------------------------------ | -------- |
@@ -193,7 +193,7 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # 4. Configure Pulumi
-pulumi login  # Use Pulumi Cloud or local backend. S3 can be used: https://www.pulumi.com/docs/iac/concepts/state-and-backends/#using-a-diy-backend
+pulumi login --local # Use Pulumi Cloud or local backend. S3 can be used: https://www.pulumi.com/docs/iac/concepts/state-and-backends/#using-a-diy-backend
 
 # 5. Set up your configuration file
 cp Pulumi.dev.yaml.example Pulumi.dev.yaml
