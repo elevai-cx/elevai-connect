@@ -22,6 +22,8 @@ from typing import Dict
 import pulumi
 import pulumi_aws as aws
 
+from ..utils.naming import create_name, create_logical_name
+
 
 def associate_s3_buckets(
     connect_instance: aws.connect.Instance,
@@ -55,14 +57,14 @@ def associate_s3_buckets(
         ("email_messages", "EMAIL_MESSAGES", "email-messages"),
     ]
     
-    for bucket_key, resource_type, prefix in bucket_configs:
+    for bucket_key, resource_type, purpose in bucket_configs:
         if bucket_key in s3_buckets:
             _associate_bucket(
                 connect_instance, 
                 s3_buckets[bucket_key], 
                 kms_key, 
                 resource_type, 
-                prefix
+                purpose
             )
 
 
@@ -71,20 +73,22 @@ def _associate_bucket(
     bucket: aws.s3.Bucket,
     kms_key: aws.kms.Key,
     resource_type: str,
-    prefix: str
+    purpose: str
 ) -> None:
-    """Create storage configuration for a single bucket type."""
-    resource_name = f"{prefix}-storage"
+    """
+    Create storage configuration for a single bucket type.
+    """
+    logical_name = create_logical_name("connect", f"{purpose}-storage")
     
     aws.connect.InstanceStorageConfig(
-        resource_name,
+        logical_name,
         instance_id=connect_instance.id,
         resource_type=resource_type,
         storage_config=aws.connect.InstanceStorageConfigStorageConfigArgs(
             storage_type="S3",
             s3_config=aws.connect.InstanceStorageConfigStorageConfigS3ConfigArgs(
                 bucket_name=bucket.id,
-                bucket_prefix=prefix,
+                bucket_prefix=purpose,
                 encryption_config=aws.connect.InstanceStorageConfigStorageConfigS3ConfigEncryptionConfigArgs(
                     encryption_type="KMS",
                     key_id=kms_key.arn,
@@ -116,18 +120,18 @@ def create_contact_flow_logs_firehose(
     Returns:
         Tuple of (Firehose delivery stream, S3 bucket)
     """
-    # Create S3 bucket with security configurations
     log_bucket = _create_firehose_bucket(tags, kms_key, logging_bucket)
     
-    # Create IAM role for Firehose
     firehose_role = _create_firehose_role(tags)
     
-    # Attach S3 access policy
     _attach_firehose_policy(firehose_role, log_bucket)
     
-    # Create Firehose delivery stream
+    firehose_name = create_name("kfs", "contact-records")
+    firehose_logical = create_logical_name("kfs", "contact-records")
+    
     firehose = aws.kinesis.FirehoseDeliveryStream(
-        "contact-records",
+        firehose_logical,
+        name=firehose_name,
         destination="extended_s3",
         extended_s3_configuration=aws.kinesis.FirehoseDeliveryStreamExtendedS3ConfigurationArgs(
             role_arn=firehose_role.arn,
@@ -142,7 +146,7 @@ def create_contact_flow_logs_firehose(
             key_type="CUSTOMER_MANAGED_CMK",
             key_arn=kms_key.arn,
         ),
-        tags=tags,
+        tags={**tags, "Name": firehose_name},
         opts=pulumi.ResourceOptions(depends_on=[firehose_role, log_bucket, kms_key])
     )
     
@@ -154,26 +158,27 @@ def _create_firehose_bucket(
     kms_key: aws.kms.Key, 
     logging_bucket: aws.s3.Bucket
 ) -> aws.s3.Bucket:
-    """Create and configure S3 bucket for Firehose logs."""
-    # Create S3 bucket for logs with Object Lock enabled
+    """
+    Create and configure S3 bucket for Firehose logs.
+    """
+    bucket_logical = create_logical_name("s3", "contact-records")
+    
     log_bucket = aws.s3.Bucket(
-        "contact-records",
+        bucket_logical,
         object_lock_enabled=True,
-        tags={**tags, "Purpose": "ContactFlowLogs"},
+        tags={**tags, "Purpose": "ContactFlowLogs"}
     )
     
-    # Enable versioning
     aws.s3.BucketVersioning(
-        "contact-records-versioning",
+        f"{bucket_logical}-versioning",
         bucket=log_bucket.id,
         versioning_configuration=aws.s3.BucketVersioningVersioningConfigurationArgs(
             status="Enabled",
-        ),
+        )
     )
     
-    # Enable KMS encryption using customer-managed key
     aws.s3.BucketServerSideEncryptionConfiguration(
-        "contact-records-encryption",
+        f"{bucket_logical}-encryption",
         bucket=log_bucket.id,
         rules=[
             aws.s3.BucketServerSideEncryptionConfigurationRuleArgs(
@@ -183,20 +188,18 @@ def _create_firehose_bucket(
                 ),
                 bucket_key_enabled=True,
             )
-        ],
+        ]
     )
     
-    # Block public access
     aws.s3.BucketPublicAccessBlock(
-        "contact-records-public-access-block",
+        f"{bucket_logical}-public-access-block",
         bucket=log_bucket.id,
         block_public_acls=True,
         block_public_policy=True,
         ignore_public_acls=True,
-        restrict_public_buckets=True,
+        restrict_public_buckets=True
     )
     
-    # Require SSL/TLS for all requests
     log_bucket_ssl_policy = log_bucket.arn.apply(
         lambda arn: aws.iam.get_policy_document(
             statements=[
@@ -227,19 +230,17 @@ def _create_firehose_bucket(
     )
     
     aws.s3.BucketPolicy(
-        "contact-records-ssl-policy",
+        f"{bucket_logical}-ssl-policy",
         bucket=log_bucket.id,
-        policy=log_bucket_ssl_policy,
+        policy=log_bucket_ssl_policy
     )
     
-    # Get lifecycle configuration from Pulumi config
     config = pulumi.Config("s3")
     contact_records_archive_days = config.get_int("contactRecords.archiveDays") or config.get_int("archiveDays") or 90
     contact_records_deletion_days = config.get_int("contactRecords.deletionDays") or config.get_int("deletionDays") or 365
     
-    # Add lifecycle policy
     aws.s3.BucketLifecycleConfiguration(
-        "contact-records-lifecycle",
+        f"{bucket_logical}-lifecycle",
         bucket=log_bucket.id,
         rules=[
             aws.s3.BucketLifecycleConfigurationRuleArgs(
@@ -255,22 +256,23 @@ def _create_firehose_bucket(
                     days=contact_records_deletion_days,
                 ),
             )
-        ],
+        ]
     )
     
-    # Enable server access logging
     aws.s3.BucketLogging(
-        "contact-records-logging",
+        f"{bucket_logical}-logging",
         bucket=log_bucket.id,
         target_bucket=logging_bucket.id,
-        target_prefix="contact-records/",
+        target_prefix="contact-records/"
     )
     
     return log_bucket
 
 
 def _create_firehose_role(tags: Dict[str, str]) -> aws.iam.Role:
-    """Create IAM role for Firehose."""
+    """
+    Create IAM role for Firehose.
+    """
     firehose_assume_role_policy = aws.iam.get_policy_document(
         statements=[
             aws.iam.GetPolicyDocumentStatementArgs(
@@ -285,10 +287,14 @@ def _create_firehose_role(tags: Dict[str, str]) -> aws.iam.Role:
         ]
     )
     
+    role_name = create_name("iam-role", "firehose-delivery")
+    role_logical = create_logical_name("iam-role", "firehose-delivery")
+    
     firehose_role = aws.iam.Role(
-        "firehose-role",
+        role_logical,
+        name=role_name,
         assume_role_policy=firehose_assume_role_policy.json,
-        tags=tags,
+        tags={**tags, "Name": role_name}
     )
     
     return firehose_role
@@ -298,7 +304,9 @@ def _attach_firehose_policy(
     role: aws.iam.Role, 
     bucket: aws.s3.Bucket
 ) -> None:
-    """Attach S3 access policy to Firehose role."""
+    """
+    Attach S3 access policy to Firehose role.
+    """
     firehose_policy = bucket.arn.apply(
         lambda bucket_arn: aws.iam.get_policy_document(
             statements=[
@@ -317,8 +325,10 @@ def _attach_firehose_policy(
         ).json
     )
     
+    policy_logical = create_logical_name("iam-policy", "firehose-s3-access")
+    
     aws.iam.RolePolicy(
-        "firehose-policy",
+        policy_logical,
         role=role.id,
-        policy=firehose_policy,
+        policy=firehose_policy
     )

@@ -38,7 +38,9 @@ from .alerting import (
     create_lambda_alarms,
     create_connect_alarms,
     create_sqs_alarms,
-    create_billing_alarms
+    create_billing_alarms,
+    create_kinesis_data_stream_alarms,
+    create_kinesis_video_stream_alarms
 )
 from .parameter_store import create_parameter_store_items, export_parameter_store_info
 from .post_deployment_tracker import print_manual_steps_summary
@@ -127,6 +129,14 @@ def create_core_infrastructure(tags: Dict[str, str]) -> Dict[str, Any]:
         
         # Amazon Connect alarms
         create_connect_alarms(connect_instance, alerting)
+        
+        # Kinesis Data Streams alarms (for contact records and agent events)
+        if data_streams:
+            create_kinesis_data_stream_alarms(data_streams, alerting)
+        
+        # Kinesis Video Streams alarms (for live media streaming)
+        if kvs_config:
+            create_kinesis_video_stream_alarms(kvs_config, alerting)
         
         # Billing alarms (AWS Budgets)
         billing_resources = create_billing_alarms(tags, alerting)

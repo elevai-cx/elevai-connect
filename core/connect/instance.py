@@ -16,6 +16,10 @@
 Amazon Connect Instance - Main Orchestration
 
 Handles the creation and configuration of Amazon Connect instances.
+
+Naming Conventions:
+- Most resources follow: <stage>-<resourceType>-<purpose>
+- Exception: Connect instance alias is user-provided (agent-facing)
 """
 
 from typing import Dict, Optional
@@ -55,6 +59,8 @@ def create_connect_instance(
     config = pulumi.Config("connect")
     
     # Get and validate configuration
+    # NOTE: Instance alias is user-provided and agent-facing, so it does NOT
+    # follow our standard naming convention (<stage>-<resourceType>-<purpose>)
     instance_alias = config.get("instanceAlias")
     if not instance_alias:
         raise ValueError("connect:instanceAlias is required in Pulumi config")
@@ -81,9 +87,11 @@ def create_connect_instance(
         contact_flow_logs_enabled = True
     
     # Create Kinesis data streams BEFORE the Connect instance
+    # These follow naming standard: <stage>-kds-<purpose>
     data_streams = create_data_streams(tags, kms_key)
     
     # Create CloudWatch log group if logging is enabled
+    # NOTE: Log group name follows AWS Connect convention: /aws/connect/{instance_alias}
     log_group = None
     if contact_flow_logs_enabled:
         log_group = configure_log_retention(instance_alias, tags)
@@ -98,6 +106,7 @@ def create_connect_instance(
         depends_on_resources.append(log_group)
     
     # Create the Amazon Connect instance
+    # Instance alias is user-provided and does not follow naming standard
     connect_instance = aws.connect.Instance(
         "connect-instance",
         identity_management_type=identity_management_type,

@@ -16,6 +16,10 @@
 IAM Utilities
 
 Reusable IAM role and policy creation functions.
+
+Naming Convention:
+- IAM Role: <stage>-iam-role-<purpose> (64 char limit)
+- IAM Policy: <stage>-iam-policy-<purpose> (128 char limit)
 """
 
 from typing import Dict, Optional, List, Union
@@ -23,9 +27,11 @@ import json
 import pulumi
 import pulumi_aws as aws
 
+from .naming import create_name, create_logical_name
+
 
 def create_lambda_role(
-    resource_name: str,
+    purpose: str,
     tags: Dict[str, str],
     additional_policy_statements: Optional[Union[List[Dict], pulumi.Output]] = None,
     managed_policy_arns: Optional[List[str]] = None,
@@ -33,12 +39,20 @@ def create_lambda_role(
     """
     Create an IAM role for Lambda with basic execution permissions.
     
+    Naming convention:
+    - Role: <stage>-iam-role-<purpose>
+    - Policy: <stage>-iam-policy-<purpose>
+    
+    Examples:
+    - dev-iam-role-lambda-execution
+    - dev-iam-policy-lambda-custom
+    
     Always includes:
     - AWSLambdaBasicExecutionRole (CloudWatch Logs)
     - AWSXRayDaemonWriteAccess (X-Ray tracing)
     
     Args:
-        resource_name: Pulumi resource name
+        purpose: Descriptive purpose (e.g., 'lambda-execution', 'knowledge-tagging')
         tags: Tags to apply to the role
         additional_policy_statements: Optional additional policy statements
         managed_policy_arns: Optional additional managed policy ARNs
@@ -46,8 +60,13 @@ def create_lambda_role(
     Returns:
         Tuple of (IAM role, list of policy attachments)
     """
+    # Generate standardized names
+    role_name = create_name("iam-role", purpose)
+    role_logical = create_logical_name("iam-role", purpose)
+    
     role = aws.iam.Role(
-        resource_name,
+        role_logical,
+        name=role_name,
         assume_role_policy="""{
             "Version": "2012-10-17",
             "Statement": [{
@@ -58,14 +77,14 @@ def create_lambda_role(
                 }
             }]
         }""",
-        tags={**tags, "Name": resource_name},
+        tags={**tags, "Name": role_name},
     )
     
     policy_attachments = []
     
     # Attach basic execution role
     basic_exec = aws.iam.RolePolicyAttachment(
-        f"{resource_name}-basic-execution",
+        f"{role_logical}-basic-execution",
         role=role.name,
         policy_arn="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
     )
@@ -73,7 +92,7 @@ def create_lambda_role(
     
     # Attach X-Ray permissions
     xray = aws.iam.RolePolicyAttachment(
-        f"{resource_name}-xray",
+        f"{role_logical}-xray",
         role=role.name,
         policy_arn="arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess",
     )
@@ -83,7 +102,7 @@ def create_lambda_role(
     if managed_policy_arns:
         for idx, policy_arn in enumerate(managed_policy_arns):
             attachment = aws.iam.RolePolicyAttachment(
-                f"{resource_name}-managed-{idx}",
+                f"{role_logical}-managed-{idx}",
                 role=role.name,
                 policy_arn=policy_arn,
             )
@@ -91,6 +110,9 @@ def create_lambda_role(
     
     # Create and attach custom policy if statements provided
     if additional_policy_statements is not None:
+        policy_name = create_name("iam-policy", purpose)
+        policy_logical = create_logical_name("iam-policy", purpose)
+        
         # Handle both raw list and Pulumi Output
         if isinstance(additional_policy_statements, pulumi.Output):
             # It's a Pulumi Output - apply the serialization
@@ -108,14 +130,15 @@ def create_lambda_role(
             })
         
         policy = aws.iam.Policy(
-            f"{resource_name}-policy",
-            description=f"Custom policy for {resource_name}",
+            policy_logical,
+            name=policy_name,
+            description=f"Custom policy for {purpose}",
             policy=policy_document,
-            tags=tags,
+            tags={**tags, "Name": policy_name},
         )
         
         custom_attachment = aws.iam.RolePolicyAttachment(
-            f"{resource_name}-custom-policy",
+            f"{role_logical}-custom-policy",
             role=role.name,
             policy_arn=policy.arn,
         )

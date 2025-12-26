@@ -23,8 +23,9 @@ from dataclasses import dataclass
 import pulumi
 import pulumi_aws as aws
 
+from ..utils.naming import create_logical_name
 
-# Type definitions for clarity
+
 AlertSeverity = Literal["INFO", "WARNING", "ERROR"]
 
 
@@ -64,22 +65,21 @@ class AlertingInfrastructure:
         self.tags = tags
         self.alarms: List[aws.cloudwatch.MetricAlarm] = []
         
-        # Create SNS topics
         self.info_warning_topic = self._create_sns_topic(
-            "info-warning-alerts",
-            "Info and Warning Alerts",
-            "Notifications for informational and warning-level events"
+            purpose="info-warning-alerts",
+            display_name="Info and Warning Alerts",
+            description="Notifications for informational and warning-level events"
         )
         
         self.error_topic = self._create_sns_topic(
-            "error-alerts",
-            "Error Alerts",
-            "Critical error notifications requiring immediate attention"
+            purpose="error-alerts",
+            display_name="Error Alerts",
+            description="Critical error notifications requiring immediate attention"
         )
     
     def _create_sns_topic(
         self,
-        resource_name: str,
+        purpose: str,
         display_name: str,
         description: str
     ) -> aws.sns.Topic:
@@ -87,40 +87,41 @@ class AlertingInfrastructure:
         Create an SNS topic for alerts.
         
         Args:
-            resource_name: Pulumi resource name
+            purpose: Descriptive purpose (e.g., 'info-warning-alerts', 'error-alerts')
             display_name: Human-readable topic name
             description: Topic description
             
         Returns:
             SNS topic resource
         """
+        logical_name = create_logical_name("sns", purpose)
+        
         topic = aws.sns.Topic(
-            resource_name,
+            logical_name,
             display_name=display_name,
             tags={
                 **self.tags,
-                "Name": resource_name,
+                "Purpose": purpose,
                 "Description": description
             }
         )
         
-        # Optional: Add email subscription from config
         config = pulumi.Config("alerting")
         
-        if resource_name == "info-warning-alerts":
+        if purpose == "info-warning-alerts":
             email = config.get("info_warning_email")
             if email:
                 aws.sns.TopicSubscription(
-                    f"{resource_name}-email-subscription",
+                    f"{logical_name}-email-subscription",
                     topic=topic.arn,
                     protocol="email",
                     endpoint=email,
                 )
-        elif resource_name == "error-alerts":
+        elif purpose == "error-alerts":
             email = config.get("error_email")
             if email:
                 aws.sns.TopicSubscription(
-                    f"{resource_name}-email-subscription",
+                    f"{logical_name}-email-subscription",
                     topic=topic.arn,
                     protocol="email",
                     endpoint=email,
@@ -138,15 +139,15 @@ class AlertingInfrastructure:
         Returns:
             CloudWatch alarm resource
         """
-        # Determine which SNS topic to use based on severity
         if alarm_config.severity == "ERROR":
             alarm_actions = [self.error_topic.arn]
-        else:  # INFO or WARNING
+        else:
             alarm_actions = [self.info_warning_topic.arn]
         
-        # Create the alarm
+        logical_name = create_logical_name("alarm", alarm_config.name)
+        
         alarm = aws.cloudwatch.MetricAlarm(
-            alarm_config.name,
+            logical_name,
             alarm_description=alarm_config.description,
             comparison_operator=alarm_config.comparison_operator,
             evaluation_periods=alarm_config.evaluation_periods,
@@ -162,7 +163,7 @@ class AlertingInfrastructure:
             tags={
                 **self.tags,
                 "Severity": alarm_config.severity,
-                "Name": alarm_config.name
+                "Purpose": alarm_config.name
             }
         )
         

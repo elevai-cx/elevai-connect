@@ -16,6 +16,10 @@
 Lambda Utilities
 
 Reusable Lambda function creation utilities with best practices.
+
+Naming Convention: <stage>-lbd-<purpose>-<hash>
+Example: dev-lbd-knowledge-tagging-abc123f
+Resource Type: lbd (64 char limit)
 """
 
 from typing import Dict, Optional
@@ -26,6 +30,8 @@ import hashlib
 import base64
 import pulumi
 import pulumi_aws as aws
+
+from .naming import create_name, create_logical_name
 
 
 def get_log_level_for_env(env_type: str) -> str:
@@ -42,7 +48,7 @@ def get_log_level_for_env(env_type: str) -> str:
 
 
 def create_lambda_with_requirements(
-    name: str,
+    purpose: str,
     lambda_dir: str,
     iam_role: aws.iam.Role,
     tags: Dict[str, str],
@@ -58,6 +64,12 @@ def create_lambda_with_requirements(
     """
     Create a Lambda function with requirements.txt support and AWS best practices.
     
+    Naming convention: <stage>-lbd-<purpose>-<hash>
+    Example: dev-lbd-knowledge-tagging-abc123f
+    
+    The logical name includes the stage prefix, and Pulumi automatically
+    appends a hash suffix for uniqueness.
+    
     Features:
     - ARM64 architecture for cost savings
     - Automatic requirements.txt installation
@@ -67,7 +79,7 @@ def create_lambda_with_requirements(
     - Consistent hash-based change detection
     
     Args:
-        name: Name for the Lambda function resource
+        purpose: Descriptive purpose (e.g., 'knowledge-tagging', 'utils')
         lambda_dir: Path to lambda directory (e.g., './lambda/utils')
         iam_role: IAM role for Lambda execution
         tags: Tags to apply to the function
@@ -90,8 +102,14 @@ def create_lambda_with_requirements(
     
     code_archive, source_hash = prepare_lambda_code(lambda_dir)
     
+    # Include stage in logical name so Pulumi adds hash suffix
+    # Logical: dev-lbd-knowledge-tagging
+    # Physical: dev-lbd-knowledge-tagging-abc123f (Pulumi adds hash)
+    stage = pulumi.get_stack()
+    logical_name = f"{stage}-lbd-{purpose}"
+    
     env_vars = {
-        "POWERTOOLS_SERVICE_NAME": name,
+        "POWERTOOLS_SERVICE_NAME": purpose,
         "POWERTOOLS_METRICS_NAMESPACE": "AmazonConnect",
         "LOG_LEVEL": log_level,
         "POWERTOOLS_LOGGER_LOG_EVENT": "true",
@@ -105,7 +123,8 @@ def create_lambda_with_requirements(
         env_vars.update(environment_variables)
     
     function = aws.lambda_.Function(
-        name,
+        logical_name,
+        # NO name parameter - let Pulumi add hash to logical name
         role=iam_role.arn,
         runtime=runtime,
         handler="index.handler",
@@ -116,7 +135,7 @@ def create_lambda_with_requirements(
         environment=aws.lambda_.FunctionEnvironmentArgs(
             variables=env_vars
         ),
-        tags={**tags, "Name": name},
+        tags={**tags, "Purpose": purpose},
         source_code_hash=source_hash,
         opts=opts,
     )
@@ -126,7 +145,7 @@ def create_lambda_with_requirements(
     retention_in_days = None if log_retention_days == 0 else log_retention_days
     
     aws.cloudwatch.LogGroup(
-        f"{name}-logs",
+        f"{logical_name}-logs",
         name=pulumi.Output.concat("/aws/lambda/", function.name),
         retention_in_days=retention_in_days,
         tags=tags,
@@ -134,7 +153,7 @@ def create_lambda_with_requirements(
     
     if connect_instance:
         aws.lambda_.Permission(
-            f"{name}-connect-invoke-permission",
+            f"{logical_name}-connect-invoke-permission",
             action="lambda:InvokeFunction",
             function=function.name,
             principal="connect.amazonaws.com",
@@ -142,7 +161,7 @@ def create_lambda_with_requirements(
         )
         
         aws.connect.LambdaFunctionAssociation(
-            f"{name}-connect-association",
+            f"{logical_name}-connect-association",
             function_arn=function.arn,
             instance_id=connect_instance.id,
         )

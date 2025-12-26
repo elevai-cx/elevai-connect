@@ -36,7 +36,7 @@ pip install -r requirements.txt
 ### Step 2: Configure Pulumi
 
 ```bash
-pulumi login  # Use Pulumi Cloud or local backend
+pulumi login  # Use Pulumi Cloud or local backend. S3 can be used: https://www.pulumi.com/docs/iac/concepts/state-and-backends/#using-a-diy-backend
 pulumi stack init dev
 ```
 
