@@ -17,11 +17,15 @@ Amazon Connect Kinesis Video Streams Configuration
 
 Handles Kinesis Video Streams setup for Amazon Connect live media streaming.
 Enables real-time video and audio streaming from customer interactions.
+
+Resource Type: kvs (Kinesis Video Stream)
 """
 
 from typing import Dict, Optional
 import pulumi
 import pulumi_aws as aws
+
+from ..utils.naming import create_logical_name
 
 
 def configure_kinesis_video_streams(
@@ -69,8 +73,12 @@ def configure_kinesis_video_streams(
         pulumi.log.info("Kinesis Video Streams disabled for Amazon Connect")
         return None
     
+    # Use standardized naming for the storage config
+    # kvs = Kinesis Video Stream
+    logical_name = create_logical_name("kvs", "media-streams")
+    
     kvs_config = aws.connect.InstanceStorageConfig(
-        "kinesis-video-streams",
+        logical_name,
         instance_id=connect_instance.id,
         resource_type="MEDIA_STREAMS",
         storage_config=aws.connect.InstanceStorageConfigStorageConfigArgs(

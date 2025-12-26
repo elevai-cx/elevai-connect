@@ -22,6 +22,8 @@ from typing import Dict
 import pulumi
 import pulumi_aws as aws
 
+from ..utils.naming import create_logical_name
+
 
 def configure_log_retention(
     instance_alias: str,

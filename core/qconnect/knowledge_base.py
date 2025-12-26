@@ -33,8 +33,11 @@ def create_assistant(
     """
     Create Amazon Q Assistant (Wisdom domain).
     
+    Name should include stage prefix for consistency.
+    Example: dev-q-assistant
+    
     Args:
-        name: Assistant name
+        name: Assistant name (with stage prefix)
         kms_key: KMS key for encryption
         tags: Tags to apply
         
@@ -68,8 +71,11 @@ def create_data_integration(
     """
     Create DataIntegration for S3 bucket.
     
+    Name should include stage prefix for consistency.
+    Example: dev-q-data-integration
+    
     Args:
-        name: Integration name
+        name: Integration name (with stage prefix)
         bucket: S3 bucket
         kms_key: KMS key
         tags: Tags to apply
@@ -104,8 +110,11 @@ def create_knowledge_base(
     """
     Create Amazon Q Knowledge Base.
     
+    Name should include stage prefix for consistency.
+    Example: dev-q-knowledge-base
+    
     Args:
-        name: Knowledge base name
+        name: Knowledge base name (with stage prefix)
         data_integration: DataIntegration resource
         kms_key: KMS key
         tags: Tags to apply

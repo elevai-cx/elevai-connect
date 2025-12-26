@@ -23,6 +23,10 @@ from .lambda_alarms import create_lambda_alarms
 from .connect_alarms import create_connect_alarms
 from .sqs_alarms import create_sqs_alarms
 from .billing_alarms import create_billing_alarms
+from .kinesis_alarms import (
+    create_kinesis_data_stream_alarms,
+    create_kinesis_video_stream_alarms
+)
 
 __all__ = [
     "create_alerting_infrastructure",
@@ -31,4 +35,6 @@ __all__ = [
     "create_connect_alarms",
     "create_sqs_alarms",
     "create_billing_alarms",
+    "create_kinesis_data_stream_alarms",
+    "create_kinesis_video_stream_alarms",
 ]

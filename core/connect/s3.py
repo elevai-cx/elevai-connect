@@ -23,6 +23,7 @@ import pulumi
 import pulumi_aws as aws
 
 from core.utils import create_secure_s3_bucket, create_logging_bucket
+from ..utils.naming import create_logical_name
 
 
 def get_retention_config(
@@ -43,7 +44,6 @@ def get_retention_config(
     Returns:
         Tuple of (archive_days, deletion_days)
     """
-    # Try to get the nested config for this bucket type
     bucket_config = config.get_object(bucket_type) or {}
     
     archive_days = bucket_config.get("archiveDays")
@@ -75,7 +75,6 @@ def create_s3_buckets(
     """
     config = pulumi.Config("s3")
     
-    # Get default retention values
     default_archive_days = config.get_int("archiveDays")
     if default_archive_days is None:
         default_archive_days = 90
@@ -84,12 +83,16 @@ def create_s3_buckets(
     if default_deletion_days is None:
         default_deletion_days = 365
     
-    # Create logging bucket first
-    logging_bucket = create_logging_bucket("s3-access-logs", tags, kms_key)
+    logging_logical = create_logical_name("s3", "access-logs")
+    
+    logging_bucket = create_logging_bucket(
+        logging_logical,
+        tags,
+        kms_key
+    )
     
     buckets = {"logging": logging_bucket}
     
-    # Define bucket configurations
     bucket_configs = [
         ("recordings", "call-recordings", "CallRecordings"),
         ("chatTranscripts", "chat-transcripts", "ChatTranscripts"),
@@ -98,16 +101,16 @@ def create_s3_buckets(
         ("screenRecordings", "screen-recordings", "ScreenRecordings"),
         ("contactEvaluations", "contact-evaluations", "ContactEvaluations"),
         ("emailMessages", "email-messages", "EmailMessages"),
-        ("connectAthenaQueries", "connect-datalake-queries", "AthenaQueryResults"),
+        ("connectAthenaQueries", "athena-queries", "AthenaQueryResults"),
     ]
     
-    # Create each bucket using utility function
-    for config_key, resource_name, purpose in bucket_configs:
+    for config_key, purpose, purpose_tag in bucket_configs:
         archive_days, deletion_days = get_retention_config(
             config, config_key, default_archive_days, default_deletion_days
         )
         
-        # Athena query results should not transition to IA (frequently accessed)
+        logical_name = create_logical_name("s3", purpose)
+        
         if config_key == "connectAthenaQueries":
             lifecycle_rules = [
                 aws.s3.BucketLifecycleConfigurationRuleArgs(
@@ -119,20 +122,19 @@ def create_s3_buckets(
                 )
             ]
         else:
-            lifecycle_rules = None  # Use default archive + expire
+            lifecycle_rules = None
         
         bucket = create_secure_s3_bucket(
-            resource_name=resource_name,
-            purpose=purpose,
+            resource_name=logical_name,
+            purpose=purpose_tag,
             tags=tags,
             kms_key=kms_key,
             logging_bucket=logging_bucket,
             archive_days=archive_days,
             deletion_days=deletion_days,
-            lifecycle_rules=lifecycle_rules,
+            lifecycle_rules=lifecycle_rules
         )
         
-        # Store with underscore key for backwards compatibility
         bucket_key = config_key.replace("chatTranscripts", "chat_transcripts") \
                                .replace("exportedReports", "exported_reports") \
                                .replace("screenRecordings", "screen_recordings") \

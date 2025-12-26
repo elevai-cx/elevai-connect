@@ -121,6 +121,42 @@ config:
       period: 300
       evaluationPeriods: 2
 
+  alarms:kinesisDataStreams:
+    iteratorAgeMilliseconds:
+      threshold: 43200000  # 12 hours 
+      period: 300
+      evaluationPeriods: 2
+    readThroughputExceeded:
+      threshold: 0.01  # 1% of requests throttled
+      period: 300
+      evaluationPeriods: 2
+    writeThroughputExceeded:
+      threshold: 0.01  # 1% of requests throttled
+      period: 300
+      evaluationPeriods: 2
+    putRecordsSuccess:
+      threshold: 0.95  # 95% success rate
+      period: 300
+      evaluationPeriods: 2
+    getRecordsSuccess:
+      threshold: 0.95  # 95% success rate
+      period: 300
+      evaluationPeriods: 2
+
+  alarms:kinesisVideoStreams:
+    getMediaConnectionErrors:
+      threshold: 5  # Connection errors when retrieving streams
+      period: 300
+      evaluationPeriods: 2
+    putMediaConnectionErrors:
+      threshold: 5  # Connection errors when streaming to KVS
+      period: 300
+      evaluationPeriods: 2
+    putMediaErrorAckCount:
+      threshold: 10  # Fragment acknowledgment errors from KVS
+      period: 300
+      evaluationPeriods: 2
+
   # --------------------------------------------------------------------------
   # AMAZON CONNECT INSTANCE
   # --------------------------------------------------------------------------

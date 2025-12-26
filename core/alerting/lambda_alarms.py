@@ -39,6 +39,9 @@ def create_lambda_alarms(
     This function defines all Lambda-related alarms and creates them
     through the alerting infrastructure.
     
+    Alarm naming: lbd-<function-purpose>-<metric>
+    Example: lbd-knowledge-tagging-errors
+    
     Alarm thresholds can be configured in Pulumi stack config under alarms:lambda:*
     
     Args:
@@ -52,7 +55,7 @@ def create_lambda_alarms(
         
         # Error rate alarm (ERROR severity)
         alerting.create_alarm(AlarmConfig(
-            name=f"lambda-{function_name}-errors",
+            name=f"lbd-{function_name}-errors",
             description=f"Lambda function {function_name} error rate is too high",
             metric_name="Errors",
             namespace="AWS/Lambda",
@@ -68,7 +71,7 @@ def create_lambda_alarms(
         
         # Throttle alarm (WARNING severity)
         alerting.create_alarm(AlarmConfig(
-            name=f"lambda-{function_name}-throttles",
+            name=f"lbd-{function_name}-throttles",
             description=f"Lambda function {function_name} is being throttled",
             metric_name="Throttles",
             namespace="AWS/Lambda",
@@ -84,7 +87,7 @@ def create_lambda_alarms(
         
         # Duration alarm (WARNING severity)
         alerting.create_alarm(AlarmConfig(
-            name=f"lambda-{function_name}-duration",
+            name=f"lbd-{function_name}-duration",
             description=f"Lambda function {function_name} duration is approaching timeout",
             metric_name="Duration",
             namespace="AWS/Lambda",
@@ -100,7 +103,7 @@ def create_lambda_alarms(
         
         # Concurrent executions alarm (INFO severity)
         alerting.create_alarm(AlarmConfig(
-            name=f"lambda-{function_name}-concurrent-executions",
+            name=f"lbd-{function_name}-concurrent-executions",
             description=f"Lambda function {function_name} concurrent executions are high",
             metric_name="ConcurrentExecutions",
             namespace="AWS/Lambda",

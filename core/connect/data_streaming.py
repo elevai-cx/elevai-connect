@@ -15,13 +15,17 @@
 """
 Amazon Connect Data Streaming Configuration
 
-Handles Kinesis stream setup for Connect instance data streaming.
+Handles Kinesis Data Stream setup for Connect instance data streaming.
 Supports both contact trace records and agent event streams.
+
+Resource Type: kds (Kinesis Data Stream)
 """
 
 from typing import Dict, Optional
 import pulumi
 import pulumi_aws as aws
+
+from ..utils.naming import create_name, create_logical_name
 
 
 def create_data_streams(
@@ -51,10 +55,10 @@ def create_data_streams(
     contact_records_config = config.get_object("contactRecords")
     if contact_records_config and contact_records_config.get("enabled"):
         streams["contact_records"] = _create_kinesis_stream(
-            "contact-records",
-            contact_records_config,
-            tags,
-            kms_key
+            purpose="contact-records",
+            config=contact_records_config,
+            tags=tags,
+            kms_key=kms_key
         )
     else:
         streams["contact_records"] = None
@@ -63,10 +67,10 @@ def create_data_streams(
     agent_events_config = config.get_object("agentEvents")
     if agent_events_config and agent_events_config.get("enabled"):
         streams["agent_events"] = _create_kinesis_stream(
-            "agent-events",
-            agent_events_config,
-            tags,
-            kms_key
+            purpose="agent-events",
+            config=agent_events_config,
+            tags=tags,
+            kms_key=kms_key
         )
     else:
         streams["agent_events"] = None
@@ -75,16 +79,19 @@ def create_data_streams(
 
 
 def _create_kinesis_stream(
-    stream_name: str,
+    purpose: str,
     config: Dict,
     tags: Dict[str, str],
     kms_key: aws.kms.Key
 ) -> aws.kinesis.Stream:
     """
-    Create a Kinesis stream with the specified configuration.
+    Create a Kinesis Data Stream with the specified configuration.
+    
+    Naming convention: <stage>-kds-<purpose>
+    Example: dev-kds-contact-records
     
     Args:
-        stream_name: Name/prefix for the stream
+        purpose: Descriptive purpose (e.g., 'contact-records', 'agent-events')
         config: Stream configuration dictionary with keys:
                 - type: "on-demand" or "provisioned"
                 - shards: shard count (only for provisioned)
@@ -101,6 +108,11 @@ def _create_kinesis_stream(
     # Validate retention period
     if retention_period < 1 or retention_period > 7:
         raise ValueError(f"Stream retention must be between 1 and 7 days, got {retention_period}")
+    
+    # Generate standardized names
+    # kds = Kinesis Data Stream
+    stream_name = create_name("kds", purpose)
+    logical_name = create_logical_name("kds", purpose)
     
     # Build stream arguments based on type
     stream_args = {
@@ -128,7 +140,7 @@ def _create_kinesis_stream(
         raise ValueError(f"Invalid stream type: {stream_type}. Must be 'on-demand' or 'provisioned'")
     
     return aws.kinesis.Stream(
-        stream_name,
+        logical_name,
         **stream_args,
         opts=pulumi.ResourceOptions(depends_on=[kms_key])
     )
@@ -148,8 +160,10 @@ def configure_instance_data_streaming(
     # Configure contact trace records streaming
     contact_records_stream = streams.get("contact_records")
     if contact_records_stream:
+        logical_name = create_logical_name("connect", "contact-trace-records")
+        
         aws.connect.InstanceStorageConfig(
-            "contact-trace-records",
+            logical_name,
             instance_id=connect_instance.id,
             resource_type="CONTACT_TRACE_RECORDS",
             storage_config=aws.connect.InstanceStorageConfigStorageConfigArgs(
@@ -164,8 +178,10 @@ def configure_instance_data_streaming(
     # Configure agent events streaming
     agent_events_stream = streams.get("agent_events")
     if agent_events_stream:
+        logical_name = create_logical_name("connect", "agent-events")
+        
         aws.connect.InstanceStorageConfig(
-            "agent-events",
+            logical_name,
             instance_id=connect_instance.id,
             resource_type="AGENT_EVENTS",
             storage_config=aws.connect.InstanceStorageConfigStorageConfigArgs(

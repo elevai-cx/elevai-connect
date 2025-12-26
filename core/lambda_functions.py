@@ -16,6 +16,8 @@
 Lambda Functions for Amazon Connect
 
 Creates Connect-specific Lambda functions using reusable utilities.
+
+Naming Convention: <stage>-lambda-<purpose>
 """
 
 from typing import Dict
@@ -32,7 +34,7 @@ def create_lambda_functions(
     """
     Create Lambda functions for Amazon Connect integrations.
     
-    Uses utility functions for consistent configuration.
+    Uses utility functions for consistent configuration and naming.
     
     Args:
         connect_instance: Amazon Connect instance
@@ -45,8 +47,9 @@ def create_lambda_functions(
     functions = {}
     
     # Utils function - common utilities for contact flows
+    # Physical name: <stage>-lbd-utils
     utils_function = create_lambda_with_requirements(
-        name="utils",
+        purpose="utils",
         lambda_dir="./lambda-code/utils",
         iam_role=iam_role,
         tags=tags,

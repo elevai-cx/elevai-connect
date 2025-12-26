@@ -94,8 +94,8 @@ class PostDeploymentTracker:
             ""
         ])
         
-        # Print as warning
-        pulumi.log.warn("\n".join(lines))
+        # Print as info
+        pulumi.log.info("\n".join(lines))
     
     def clear(self):
         """Clear all tracked steps (useful for testing)."""

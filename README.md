@@ -28,7 +28,7 @@ This project aims to provide a core set of Amazon Connect features that can then
 2. By the user using the ./custom folder to develop customer features via Pulumi
 3. Through additional modules that will be developed over time.
 
-The current feature available in this version are detailed below. These gaps can be configured as you see fit (Console / IaC), the gaps will be resolved over time (Why not [Contribute](CONTRIBUTING.md))
+The current feature available in this version are detailed below. These gaps can be configured as you see fit (Console / IaC), the gaps will be resolved over time when the resource can be configured via IaC (See an improvement? Why not [Contribute](CONTRIBUTING.md))
 
 | Feature                              | Included |
 | ------------------------------------ | -------- |
@@ -55,6 +55,7 @@ The current feature available in this version are detailed below. These gaps can
 | Tasks Integrations                   | ❌        |
 | Cases                                | ❌        |
 | External voice connector             | ❌        |
+| Traffic Distribution (Multi-region)  | ❌        |
 
 ## 💡 Why This Project Exists
 
@@ -192,7 +193,7 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # 4. Configure Pulumi
-pulumi login  # Use Pulumi Cloud or local backend
+pulumi login  # Use Pulumi Cloud or local backend. S3 can be used: https://www.pulumi.com/docs/iac/concepts/state-and-backends/#using-a-diy-backend
 
 # 5. Set up your configuration file
 cp Pulumi.dev.yaml.example Pulumi.dev.yaml
@@ -504,3 +505,11 @@ Built with ❤️ by ELEVAI using:
 ---
 
 **Ready to deploy world-class contact center infrastructure?** Get started in minutes with production-ready monitoring, AI assistance, and security built-in.
+
+
+# Deleting the stack
+
+1. Empty all S3 buckets
+2. Athena Workgroup needs to be manually deleted? (TODO)
+3. Delete any LEX bots created via the AWS Console
+4. Run `pulumi destroy`
