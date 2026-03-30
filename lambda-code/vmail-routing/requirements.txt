@@ -1,0 +1,8 @@
+# AWS Lambda Powertools for observability
+aws-lambda-powertools[tracer]==3.20.0
+
+# AWS SDK for Python
+boto3>=1.42.78
+
+# HTTP library for presigned URL uploads
+requests>=2.31.0

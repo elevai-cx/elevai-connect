@@ -33,6 +33,7 @@ from .logging import configure_log_retention
 from .origins import create_approved_origins
 from .data_streaming import create_data_streams, configure_instance_data_streaming
 from .kvs import configure_kinesis_video_streams
+from .vmail import create_vmail_infrastructure
 from .data_lake import setup_analytics_data_lake, create_lake_formation_database, create_resource_links, _get_default_data_sets
 from .athena import configure_athena_workgroup, create_athena_named_queries
 from ..post_deployment_tracker import add_manual_step
@@ -116,7 +117,13 @@ def create_connect_instance(
         tags={**tags, "Name": f"{instance_alias}-connect-instance"},
         multi_party_conference_enabled=multi_party_conference_enabled,
         contact_flow_logs_enabled=contact_flow_logs_enabled,
-        opts=pulumi.ResourceOptions(depends_on=depends_on_resources)
+        opts=pulumi.ResourceOptions(
+            depends_on=depends_on_resources,
+            # Protect the Connect instance from accidental deletion.
+            # Instance alias is permanent and globally unique — losing it
+            # means you cannot recreate with the same alias.
+            retain_on_delete=True,
+        )
     )
 
     add_manual_step(

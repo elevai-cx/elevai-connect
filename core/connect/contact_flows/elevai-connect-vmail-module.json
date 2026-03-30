@@ -1,0 +1,296 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "6e54ba13-ef55-44f5-9c83-e0af511d666b",
+  "Metadata": {
+    "entryPointPosition": {
+      "x": 40,
+      "y": 40
+    },
+    "ActionMetadata": {
+      "6e54ba13-ef55-44f5-9c83-e0af511d666b": {
+        "position": {
+          "x": 165.6,
+          "y": 39.2
+        }
+      },
+      "f3cc4513-ebe9-41e8-9f22-298fc18da828": {
+        "position": {
+          "x": 408.8,
+          "y": 39.2
+        }
+      },
+      "Get start timestamp": {
+        "position": {
+          "x": 664.8,
+          "y": 38.4
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "LambdaFunctionARN": {
+            "displayName": "{{UTILS_LAMBDA_NAME}}"
+          }
+        },
+        "dynamicMetadata": {
+          "requestType": false
+        }
+      },
+      "Tag vmail": {
+        "position": {
+          "x": 925.6,
+          "y": 38.4
+        },
+        "isFriendlyName": true
+      },
+      "Set vmail attributes": {
+        "position": {
+          "x": 1170.4,
+          "y": 40
+        },
+        "isFriendlyName": true,
+        "dynamicParams": []
+      },
+      "Record voicemail": {
+        "position": {
+          "x": 1427.2,
+          "y": 37.6
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "PromptId": {
+            "displayName": "vmail-beep"
+          }
+        },
+        "promptName": "vmail-beep",
+        "conditionMetadata": [],
+        "countryCodePrefix": "+1"
+      },
+      "9311f9ab-2f20-4ee8-b61d-9d7081c090bc": {
+        "position": {
+          "x": 1707.2,
+          "y": 43.2
+        }
+      }
+    },
+    "Annotations": [],
+    "name": "elevai-connect-vmail",
+    "description": "Voicemail capture module — records a message and tags the contact",
+    "status": "published",
+    "settings": {
+      "input": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "elevai-connect-vmail-destination-channel": {
+              "type": "string",
+              "default": "task",
+              "description": "Support for \"task\" or \"case\""
+            },
+            "elevai-connect-vmail-queue-arn": {
+              "type": "string",
+              "description": "REQUIRED when using task"
+            },
+            "elevai-connect-vmail-destination-case-template-id": {
+              "type": "string",
+              "description": "OPTIONAL when using case - falls back to default template"
+            },
+            "elevai-connect-vmail-customer-id": {
+              "type": "string",
+              "description": "OPTIONAL - Customer profile ARN for case creation"
+            },
+            "elevai-connect-vmail-genai-summary": {
+              "type": "string",
+              "default": "true",
+              "description": "OPTIONAL - Enable GenAI summary generation using Amazon Bedrock. Pass \"true\" to enable."
+            },
+            "elevai-connect-vmail-genai-prompt": {
+              "type": "string",
+              "default": "",
+              "description": "OPTIONAL - Custom prompt for GenAI summary generation"
+            }
+          },
+          "required": [
+            "elevai-connect-vmail-destination-channel"
+          ]
+        }
+      }
+    },
+    "hash": {}
+  },
+  "Actions": [
+    {
+      "Parameters": {
+        "FlowLoggingBehavior": "Disabled"
+      },
+      "Identifier": "6e54ba13-ef55-44f5-9c83-e0af511d666b",
+      "Type": "UpdateFlowLoggingBehavior",
+      "Transitions": {
+        "NextAction": "f3cc4513-ebe9-41e8-9f22-298fc18da828"
+      }
+    },
+    {
+      "Parameters": {
+        "VoiceBehavior": {
+          "VoiceRecordingBehavior": {
+            "RecordedParticipants": [
+              "Agent",
+              "Customer"
+            ],
+            "IVRRecordingBehavior": "Enabled"
+          },
+          "VoiceAnalyticsBehavior": {
+            "Enabled": "True",
+            "AnalyticsLanguage": "en-GB",
+            "AnalyticsModes": [
+              "RealTime"
+            ],
+            "ConversationalAnalyticsRedactionConfiguration": {
+              "Enabled": "True",
+              "RedactionMaskMode": "PII",
+              "RedactionResults": "RedactedAndOriginal"
+            },
+            "SentimentConfiguration": {
+              "Enabled": "True"
+            },
+            "SummaryConfiguration": {
+              "SummaryModes": [
+                "PostContact"
+              ]
+            }
+          }
+        }
+      },
+      "Identifier": "f3cc4513-ebe9-41e8-9f22-298fc18da828",
+      "Type": "UpdateContactRecordingAndAnalyticsBehavior",
+      "Transitions": {
+        "NextAction": "Get start timestamp",
+        "Errors": [
+          {
+            "NextAction": "Get start timestamp",
+            "ErrorType": "NoMatchingError"
+          },
+          {
+            "NextAction": "Get start timestamp",
+            "ErrorType": "ChannelMismatch"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "LambdaFunctionARN": "{{UTILS_LAMBDA_ARN}}",
+        "InvocationTimeLimitSeconds": "3",
+        "InvocationType": "SYNCHRONOUS",
+        "LambdaInvocationAttributes": {
+          "requestType": "timestamp"
+        },
+        "ResponseValidation": {
+          "ResponseType": "STRING_MAP"
+        }
+      },
+      "Identifier": "Get start timestamp",
+      "Type": "InvokeLambdaFunction",
+      "Transitions": {
+        "NextAction": "Tag vmail",
+        "Errors": [
+          {
+            "NextAction": "Tag vmail",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "Tags": {
+          "elevai-connect-vmail": "true"
+        }
+      },
+      "Identifier": "Tag vmail",
+      "Type": "TagContact",
+      "Transitions": {
+        "NextAction": "Set vmail attributes",
+        "Errors": [
+          {
+            "NextAction": "Set vmail attributes",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "Attributes": {
+          "elevai-connect-vmail-destination-channel": "$.Modules.Input.elevai-connect-vmail-destination-channel",
+          "elevai-connect-vmail-caller-number": "$.CustomerEndpoint.Address",
+          "elevai-connect-vmail-destination-case-template-id": "$.Modules.Input.elevai-connect-vmail-destination-case-template-id",
+          "elevai-connect-vmail-queue-arn": "$.Modules.Input.elevai-connect-vmail-queue-arn",
+          "elevai-connect-vmail-customer-id": "$.Modules.Input.elevai-connect-vmail-customer-id",
+          "elevai-connect-vmail-start-time": "$.External.timestamp",
+          "elevai-connect-vmail-genai-summary": "$.Modules.Input.elevai-connect-vmail-genai-summary",
+          "elevai-connect-vmail-genai-prompt": "$.Modules.Input.elevai-connect-vmail-genai-prompt"
+        },
+        "TargetContact": "Current"
+      },
+      "Identifier": "Set vmail attributes",
+      "Type": "UpdateContactAttributes",
+      "Transitions": {
+        "NextAction": "Record voicemail",
+        "Errors": [
+          {
+            "NextAction": "Record voicemail",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "StoreInput": "True",
+        "InputTimeLimitSeconds": "180",
+        "PromptId": "{{BEEP_PROMPT_ARN}}",
+        "DTMFConfiguration": {
+          "DisableCancelKey": "False",
+          "InterdigitTimeLimitSeconds": "1"
+        },
+        "InputValidation": {
+          "CustomValidation": {
+            "MaximumLength": "1"
+          }
+        }
+      },
+      "Identifier": "Record voicemail",
+      "Type": "GetParticipantInput",
+      "Transitions": {
+        "NextAction": "9311f9ab-2f20-4ee8-b61d-9d7081c090bc",
+        "Errors": [
+          {
+            "NextAction": "9311f9ab-2f20-4ee8-b61d-9d7081c090bc",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {},
+      "Identifier": "9311f9ab-2f20-4ee8-b61d-9d7081c090bc",
+      "Type": "EndFlowModuleExecution",
+      "Transitions": {}
+    }
+  ],
+  "Settings": {
+    "InputParameters": [],
+    "OutputParameters": [],
+    "Transitions": [
+      {
+        "DisplayName": "Success",
+        "ReferenceName": "Success",
+        "Description": ""
+      },
+      {
+        "DisplayName": "Error",
+        "ReferenceName": "Error",
+        "Description": ""
+      }
+    ]
+  }
+}

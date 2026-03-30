@@ -1,0 +1,100 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "a09d5521-42cb-445c-8f1d-74cf107cfd5d",
+  "Metadata": {
+    "entryPointPosition": {
+      "x": 40,
+      "y": 40
+    },
+    "ActionMetadata": {
+      "85fa42f7-840a-4092-8a41-9eb43e3a17b4": {
+        "position": {
+          "x": 985.6,
+          "y": 34.4
+        }
+      },
+      "a09d5521-42cb-445c-8f1d-74cf107cfd5d": {
+        "position": {
+          "x": 171.2,
+          "y": 39.2
+        }
+      },
+      "12ce2950-5114-4324-8723-8f254cb3e181": {
+        "position": {
+          "x": 725.6,
+          "y": 35.2
+        }
+      },
+      "a2279357-0eaa-4171-84f1-a9bbc158b475": {
+        "position": {
+          "x": 433.6,
+          "y": 42.4
+        },
+        "parameters": {
+          "QueueId": {
+            "useDynamic": true
+          }
+        },
+        "useDynamic": true
+      }
+    },
+    "Annotations": [],
+    "name": "elevai-connect-vmail-task",
+    "description": "Task contact flow for voicemail tasks.",
+    "type": "contactFlow",
+    "status": "published",
+    "hash": {}
+  },
+  "Actions": [
+    {
+      "Parameters": {},
+      "Identifier": "85fa42f7-840a-4092-8a41-9eb43e3a17b4",
+      "Type": "DisconnectParticipant",
+      "Transitions": {}
+    },
+    {
+      "Parameters": {
+        "FlowLoggingBehavior": "Enabled"
+      },
+      "Identifier": "a09d5521-42cb-445c-8f1d-74cf107cfd5d",
+      "Type": "UpdateFlowLoggingBehavior",
+      "Transitions": {
+        "NextAction": "a2279357-0eaa-4171-84f1-a9bbc158b475"
+      }
+    },
+    {
+      "Parameters": {},
+      "Identifier": "12ce2950-5114-4324-8723-8f254cb3e181",
+      "Type": "TransferContactToQueue",
+      "Transitions": {
+        "NextAction": "85fa42f7-840a-4092-8a41-9eb43e3a17b4",
+        "Errors": [
+          {
+            "NextAction": "85fa42f7-840a-4092-8a41-9eb43e3a17b4",
+            "ErrorType": "QueueAtCapacity"
+          },
+          {
+            "NextAction": "85fa42f7-840a-4092-8a41-9eb43e3a17b4",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "QueueId": "$.Attributes.elevai-connect-vmail-queue-arn"
+      },
+      "Identifier": "a2279357-0eaa-4171-84f1-a9bbc158b475",
+      "Type": "UpdateContactTargetQueue",
+      "Transitions": {
+        "NextAction": "12ce2950-5114-4324-8723-8f254cb3e181",
+        "Errors": [
+          {
+            "NextAction": "12ce2950-5114-4324-8723-8f254cb3e181",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    }
+  ]
+}

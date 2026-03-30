@@ -30,7 +30,6 @@ from .knowledge_base import (
     create_data_integration,
     create_knowledge_base,
     associate_knowledge_base_with_assistant,
-    create_bucket_policy_for_app_integrations,
 )
 from .content_tagging import create_content_tagging_infrastructure
 
@@ -72,19 +71,16 @@ def create_qconnect_integration(
     
     # Create Assistant
     assistant = create_assistant(assistant_name, kms_key, tags)
-    
-    # Create bucket policy for AppIntegrations
-    bucket_policy = create_bucket_policy_for_app_integrations(
-        knowledge_base_s3_bucket
-    )
-    
-    # Create DataIntegration (depends on bucket policy)
+
+    # Create DataIntegration
+    # The AppIntegrations bucket policy is now created as part of the bucket
+    # itself (inside create_qconnect_knowledge_bucket) to avoid having two
+    # competing BucketPolicy resources on the same bucket.
     data_integration = create_data_integration(
         data_integration_name,
         knowledge_base_s3_bucket,
         kms_key,
         tags,
-        opts=pulumi.ResourceOptions(depends_on=[bucket_policy])
     )
     
     # Create Knowledge Base
@@ -204,26 +200,64 @@ def create_qconnect_integration(
 
 
 def create_qconnect_knowledge_bucket(
-    tags: Dict[str, str], 
-    kms_key: aws.kms.Key, 
+    tags: Dict[str, str],
+    kms_key: aws.kms.Key,
     logging_bucket: aws.s3.Bucket
 ) -> aws.s3.Bucket:
     """
     Create S3 bucket for QConnect knowledge base.
-    
+
     Uses utility function for consistency with other buckets.
-    
+    Includes the AppIntegrations policy statements directly so there is
+    a single BucketPolicy resource per bucket (AWS only allows one).
+
     Naming Pattern: <stage>-s3-<purpose>-<hash>
     Example: dev-s3-q-knowledge-abc123f
-    
+
     Args:
         tags: Tags to apply
         kms_key: KMS key
         logging_bucket: Logging bucket
-        
+
     Returns:
         S3 bucket for knowledge base
     """
+    current = aws.get_caller_identity()
+    region = aws.get_region()
+
+    # AppIntegrations statements are included here rather than in a separate
+    # BucketPolicy resource, because AWS only allows one policy per bucket.
+    # Split into two statements so the sentinel ARN replacement in
+    # create_secure_s3_bucket's build_policy works (it handles single-value
+    # Resource fields: "arn:aws:s3:::*" → bucket ARN, "arn:aws:s3:::*/*" → objects).
+    app_integrations_condition = {
+        "StringEquals": {"aws:SourceAccount": current.account_id},
+        "ArnEquals": {
+            "aws:SourceArn": (
+                f"arn:aws:app-integrations:{region.id}"
+                f":{current.account_id}:data-integration/*"
+            )
+        },
+    }
+    app_integrations_statements = [
+        {
+            "Sid": "AllowAppIntegrationsListBucket",
+            "Effect": "Allow",
+            "Principal": {"Service": "app-integrations.amazonaws.com"},
+            "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
+            "Resource": "arn:aws:s3:::*",
+            "Condition": app_integrations_condition,
+        },
+        {
+            "Sid": "AllowAppIntegrationsGetObject",
+            "Effect": "Allow",
+            "Principal": {"Service": "app-integrations.amazonaws.com"},
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::*/*",
+            "Condition": app_integrations_condition,
+        },
+    ]
+
     lifecycle_rules = [
         aws.s3.BucketLifecycleConfigurationRuleArgs(
             id="delete-old-versions",
@@ -233,9 +267,9 @@ def create_qconnect_knowledge_bucket(
             ),
         )
     ]
-    
+
     logical_name = create_logical_name("s3", "q-knowledge")
-    
+
     bucket = create_secure_s3_bucket(
         resource_name=logical_name,
         purpose="QConnectKnowledgeBase",
@@ -243,7 +277,8 @@ def create_qconnect_knowledge_bucket(
         kms_key=kms_key,
         logging_bucket=logging_bucket,
         lifecycle_rules=lifecycle_rules,
+        additional_policy_statements=app_integrations_statements,
         # NO bucket_name parameter - let Pulumi add hash
     )
-    
+
     return bucket

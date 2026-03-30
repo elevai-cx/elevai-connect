@@ -51,8 +51,12 @@ def create_logging_bucket(
     }
     if bucket_name:
         bucket_args["bucket"] = bucket_name
-    
-    bucket = aws.s3.Bucket(resource_name, **bucket_args)
+
+    bucket = aws.s3.Bucket(
+        resource_name,
+        opts=pulumi.ResourceOptions(retain_on_delete=True),
+        **bucket_args,
+    )
     
     aws.s3.BucketVersioning(
         f"{resource_name}-versioning",
@@ -196,8 +200,12 @@ def create_secure_s3_bucket(
     }
     if bucket_name:
         bucket_args["bucket"] = bucket_name
-    
-    bucket = aws.s3.Bucket(resource_name, **bucket_args)
+
+    bucket = aws.s3.Bucket(
+        resource_name,
+        opts=pulumi.ResourceOptions(retain_on_delete=True),
+        **bucket_args,
+    )
     
     aws.s3.BucketVersioning(
         f"{resource_name}-versioning",
@@ -244,10 +252,21 @@ def create_secure_s3_bucket(
                 }
             }
         ]
-        
+
         if additional_policy_statements:
-            statements.extend(additional_policy_statements)
-        
+            # Replace the wildcard resource sentinel with the real bucket ARN
+            # so callers can pass statements without knowing the bucket name.
+            resolved = []
+            for stmt in additional_policy_statements:
+                s = dict(stmt)
+                resource = s.get("Resource")
+                if resource == "arn:aws:s3:::*/*":
+                    s["Resource"] = f"{arn}/*"
+                elif resource == "arn:aws:s3:::*":
+                    s["Resource"] = arn
+                resolved.append(s)
+            statements.extend(resolved)
+
         return json.dumps({
             "Version": "2012-10-17",
             "Statement": statements

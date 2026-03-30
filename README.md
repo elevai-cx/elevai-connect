@@ -53,7 +53,7 @@ The current features available in this version are detailed below. These gaps ca
 | Email Domain                         | ❌        |
 | Outbound Campaign                    | ❌        |
 | Tasks Integrations                   | ❌        |
-| Cases                                | ❌        |
+| Cases                                | ✅        |
 | External voice connector             | ❌        |
 | Traffic Distribution (Multi-region)  | ❌        |
 
