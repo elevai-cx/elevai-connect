@@ -26,8 +26,10 @@ from .connect import (
     create_connect_instance, 
     create_s3_buckets, 
     create_iam_resources,
-    create_customer_profiles_integration
+    create_customer_profiles_integration,
+    create_cases_domain,
 )
+from .connect.vmail import _create_beep_prompt, _create_vmail_contact_flow
 from .lambda_functions import create_lambda_functions
 from .qconnect import create_qconnect_integration, create_qconnect_knowledge_bucket
 from .kms import create_connect_data_key
@@ -75,14 +77,15 @@ def create_core_infrastructure(tags: Dict[str, str]) -> Dict[str, Any]:
     resources["s3_buckets"] = s3_buckets
     
     # Create Amazon Connect instance and associate S3 buckets
-    connect_instance, data_streams, kvs_config = create_connect_instance(tags, s3_buckets, kms_key)
+    connect_instance, data_streams, kvs_config = create_connect_instance(
+        tags, s3_buckets, kms_key
+    )
     resources["connect_instance"] = connect_instance
     resources["connect_instance_id"] = connect_instance.id
     resources["connect_instance_arn"] = connect_instance.arn
     resources["data_streams"] = data_streams
     resources["kvs_config"] = kvs_config
-    
-    
+
     # Create Lambda functions
     lambda_functions = create_lambda_functions(
         connect_instance=connect_instance,
@@ -108,8 +111,9 @@ def create_core_infrastructure(tags: Dict[str, str]) -> Dict[str, Any]:
         )
         resources["qconnect"] = qconnect_resources
     
-    # Create Customer Profiles integration (optional)
+    # Create Customer Profiles integration (required for Cases)
     customer_profiles_config = pulumi.Config("customerProfiles")
+    cases_domain = None
     if customer_profiles_config.get_bool("enabled") or False:
         customer_profiles_resources = create_customer_profiles_integration(
             connect_instance=connect_instance,
@@ -118,6 +122,28 @@ def create_core_infrastructure(tags: Dict[str, str]) -> Dict[str, Any]:
         )
         if customer_profiles_resources:
             resources["customer_profiles"] = customer_profiles_resources
+            
+            # Create Cases domain (requires Customer Profiles)
+            cases_domain = create_cases_domain(
+                connect_instance_id=connect_instance.id,
+                connect_instance_arn=connect_instance.arn,
+                customer_profiles_domain=customer_profiles_resources["domain"],
+                tags=tags
+            )
+            resources["cases_domain"] = cases_domain
+    
+    # Create voicemail infrastructure (after cases_domain so it can use it if available)
+    from .connect.vmail import create_vmail_infrastructure
+    vmail_resources = create_vmail_infrastructure(
+        connect_instance=connect_instance,
+        call_recordings_bucket=s3_buckets["recordings"],
+        tags=tags,
+        kms_key=kms_key,
+        logging_bucket=s3_buckets["logging"],
+        utils_lambda=lambda_functions["utils"],
+        cases_domain=cases_domain,
+    )
+    resources["vmail"] = vmail_resources
     
     # Create CloudWatch alarms for all resources
     # Check if alerting is enabled (default: true)

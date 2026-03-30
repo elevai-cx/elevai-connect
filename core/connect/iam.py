@@ -304,6 +304,12 @@ def create_saml_resources(tags: Dict[str, str]) -> Dict[str, any]:
         name="ConnectSAMLProvider",
         saml_metadata_document=saml_metadata,
         tags={**tags, "Purpose": "ConnectSAMLAuth"},
+        opts=pulumi.ResourceOptions(
+            # The SAML metadata is deployed as a placeholder and then updated
+            # manually via the AWS console with the real IdP metadata.
+            # Ignore changes so refresh/up don't revert the user's update.
+            ignore_changes=["saml_metadata_document"],
+        ),
     )
     
     # Create trust policy for the SAML role

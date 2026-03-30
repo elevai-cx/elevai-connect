@@ -56,6 +56,13 @@ def create_assistant(
             {"key": key, "value": value}
             for key, value in {**tags, "Name": name}.items()
         ],
+        opts=pulumi.ResourceOptions(
+            # Amazon Connect manages additional tags on Wisdom resources
+            # outside of Pulumi. Ignore tag diffs to prevent unnecessary
+            # replacements which break integration associations.
+            ignore_changes=["tags"],
+            retain_on_delete=True,
+        ),
     )
     
     return assistant
@@ -139,6 +146,13 @@ def create_knowledge_base(
             {"key": key, "value": value}
             for key, value in {**tags, "Name": name}.items()
         ],
+        opts=pulumi.ResourceOptions(
+            # Amazon Connect manages additional tags on Wisdom resources
+            # outside of Pulumi. Ignore tag diffs to prevent unnecessary
+            # replacements which break integration associations.
+            ignore_changes=["tags"],
+            retain_on_delete=True,
+        ),
     )
     
     return knowledge_base
@@ -171,6 +185,10 @@ def associate_knowledge_base_with_assistant(
             {"key": key, "value": value}
             for key, value in tags.items()
         ],
+        opts=pulumi.ResourceOptions(
+            ignore_changes=["tags"],
+            retain_on_delete=True,
+        ),
     )
     
     return association

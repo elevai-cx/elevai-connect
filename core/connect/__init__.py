@@ -25,6 +25,8 @@ from .iam import create_iam_resources
 from .athena import configure_athena_workgroup, create_athena_named_queries
 from .customer_profiles import create_customer_profiles_integration
 from .kvs import configure_kinesis_video_streams
+from .vmail import create_vmail_infrastructure
+from .cases import create_cases_domain
 
 __all__ = [
     'create_connect_instance',
@@ -35,4 +37,6 @@ __all__ = [
     'create_athena_named_queries',
     'create_customer_profiles_integration',
     'configure_kinesis_video_streams',
+    'create_vmail_infrastructure',
+    'create_cases_domain',
 ]
