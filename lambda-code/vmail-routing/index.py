@@ -509,6 +509,10 @@ def _deliver_via_case(
       - Attached file: The voicemail WAV file via Connect StartAttachedFileUpload
       - Comment: The transcript text
       - Related contact: The original contact ID
+    
+    Note: Once the case is successfully created, downstream failures (linking contact,
+    attaching file, adding comment) are logged but do not raise exceptions. This prevents
+    duplicate case creation on SQS message retry.
     """
     logger.info(
         "Creating Connect Case",
@@ -521,6 +525,9 @@ def _deliver_via_case(
         },
     )
 
+    case_id = None
+    case_arn = None
+    
     try:
         # Read envelope JSON to check for genaiSummary field
         case_summary = "Voicemail Summary: [Transcript available in comments]"
@@ -587,37 +594,49 @@ def _deliver_via_case(
         case_arn = case_response["caseArn"]
         
         logger.info(
-            "Connect Case created",
+            "Connect Case created successfully",
             extra={"caseId": case_id, "caseArn": case_arn, "contactId": contact_id},
         )
         metrics.add_metric(name="CaseCreated", unit=MetricUnit.Count, value=1)
         
-        # Link the original contact to the case
-        try:
-            contact_arn = f"arn:aws:connect:{region}:{account_id}:instance/{CONNECT_INSTANCE_ID}/contact/{contact_id}"
-            connectcases.create_related_item(
-                caseId=case_id,
-                domainId=CASES_DOMAIN_ID,
-                type="Contact",
-                content={
-                    "contact": {
-                        "contactArn": contact_arn
-                    }
+    except Exception as exc:
+        logger.error(
+            "Failed to create Connect Case",
+            extra={"contactId": contact_id, "error": str(exc)},
+        )
+        metrics.add_metric(name="CaseCreationFailed", unit=MetricUnit.Count, value=1)
+        raise  # Re-raise to trigger SQS retry since case was not created
+    
+    # Case created successfully - downstream failures should not trigger retry
+    # to prevent duplicate case creation
+    
+    # Link the original contact to the case
+    try:
+        contact_arn = f"arn:aws:connect:{region}:{account_id}:instance/{CONNECT_INSTANCE_ID}/contact/{contact_id}"
+        connectcases.create_related_item(
+            caseId=case_id,
+            domainId=CASES_DOMAIN_ID,
+            type="Contact",
+            content={
+                "contact": {
+                    "contactArn": contact_arn
                 }
-            )
-            logger.info(
-                "Original contact linked to case",
-                extra={"caseId": case_id, "contactId": contact_id, "contactArn": contact_arn},
-            )
-            metrics.add_metric(name="CaseContactLinked", unit=MetricUnit.Count, value=1)
-        except Exception as exc:
-            logger.warning(
-                "Failed to link contact to case",
-                extra={"caseId": case_id, "contactId": contact_id, "error": str(exc)},
-            )
-        
-        # Attach the voicemail WAV file using Connect StartAttachedFileUpload
-        try:
+            }
+        )
+        logger.info(
+            "Original contact linked to case",
+            extra={"caseId": case_id, "contactId": contact_id, "contactArn": contact_arn},
+        )
+        metrics.add_metric(name="CaseContactLinked", unit=MetricUnit.Count, value=1)
+    except Exception as exc:
+        logger.warning(
+            "Failed to link contact to case (case already created)",
+            extra={"caseId": case_id, "contactId": contact_id, "error": str(exc)},
+        )
+        metrics.add_metric(name="CaseContactLinkFailed", unit=MetricUnit.Count, value=1)
+    
+    # Attach the voicemail WAV file using Connect StartAttachedFileUpload
+    try:
             file_name = wav_key.split("/")[-1]  # Extract filename from key
             file_size = _get_file_size(VMAIL_BUCKET, wav_key)
             
@@ -675,50 +694,43 @@ def _deliver_via_case(
                 AssociatedResourceArn=case_arn,
             )
             
-            logger.info(
-                "Voicemail WAV attached to case",
-                extra={"caseId": case_id, "fileName": file_name, "fileSize": file_size, "fileArn": file_arn},
+        logger.info(
+            "Voicemail WAV attached to case",
+            extra={"caseId": case_id, "fileName": file_name, "fileSize": file_size, "fileArn": file_arn},
+        )
+        metrics.add_metric(name="CaseFileAttached", unit=MetricUnit.Count, value=1)
+    except Exception as exc:
+        logger.warning(
+            "Failed to attach WAV file to case (case already created)",
+            extra={"caseId": case_id, "error": str(exc)},
+        )
+        metrics.add_metric(name="CaseFileAttachmentFailed", unit=MetricUnit.Count, value=1)
+    
+    # Add transcript as a comment (last so it appears at the bottom)
+    if transcript:
+        try:
+            connectcases.create_related_item(
+                caseId=case_id,
+                domainId=CASES_DOMAIN_ID,
+                type="Comment",
+                content={
+                    "comment": {
+                        "body": f"Voicemail Transcript:\n\n{transcript}",
+                        "contentType": "Text/Plain"
+                    }
+                }
             )
-            metrics.add_metric(name="CaseFileAttached", unit=MetricUnit.Count, value=1)
+            logger.info(
+                "Transcript added as comment to case",
+                extra={"caseId": case_id, "contactId": contact_id},
+            )
+            metrics.add_metric(name="CaseCommentAdded", unit=MetricUnit.Count, value=1)
         except Exception as exc:
             logger.warning(
-                "Failed to attach WAV file to case",
+                "Failed to add transcript comment to case (case already created)",
                 extra={"caseId": case_id, "error": str(exc)},
             )
-            metrics.add_metric(name="CaseFileAttachmentFailed", unit=MetricUnit.Count, value=1)
-        
-        # Add transcript as a comment (last so it appears at the bottom)
-        if transcript:
-            try:
-                connectcases.create_related_item(
-                    caseId=case_id,
-                    domainId=CASES_DOMAIN_ID,
-                    type="Comment",
-                    content={
-                        "comment": {
-                            "body": f"Voicemail Transcript:\n\n{transcript}",
-                            "contentType": "Text/Plain"
-                        }
-                    }
-                )
-                logger.info(
-                    "Transcript added as comment to case",
-                    extra={"caseId": case_id, "contactId": contact_id},
-                )
-                metrics.add_metric(name="CaseCommentAdded", unit=MetricUnit.Count, value=1)
-            except Exception as exc:
-                logger.warning(
-                    "Failed to add transcript comment to case",
-                    extra={"caseId": case_id, "error": str(exc)},
-                )
-        
-    except Exception as exc:
-        logger.error(
-            "Failed to create Connect Case or attach file",
-            extra={"contactId": contact_id, "error": str(exc)},
-        )
-        metrics.add_metric(name="CaseCreationFailed", unit=MetricUnit.Count, value=1)
-        raise
+            metrics.add_metric(name="CaseCommentAddFailed", unit=MetricUnit.Count, value=1)
 
 
 def _get_file_size(bucket: str, key: str) -> int:
