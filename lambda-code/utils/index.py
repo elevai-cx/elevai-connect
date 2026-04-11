@@ -27,7 +27,7 @@ from aws_lambda_powertools.metrics import MetricUnit
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
 # Import handlers
-from handlers import q_connect_tags, timestamp
+from handlers import q_connect_tags, timestamp, presigned_url, queue_to_agent_arn
 
 # Initialize PowerTools with service name
 logger = Logger(
@@ -49,6 +49,8 @@ HANDLERS = {
     'q_connect_tags': q_connect_tags.handle,
     'qconnect_tags': q_connect_tags.handle,  # Alias for flexibility
     'timestamp': timestamp.handle,
+    'presigned_url': presigned_url.handle,
+    'queue_to_agent_arn': queue_to_agent_arn.handle,
 }
 
 

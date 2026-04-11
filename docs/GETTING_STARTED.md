@@ -1,8 +1,7 @@
-# Deploy elevai-connect Workshop
+# Getting Started
 
 **Duration:** 15-20 minutes  
-**Level:** Beginner  
-**Mode:** Interactive with Claude Code
+**Level:** Beginner
 
 ## What You'll Deploy
 
@@ -21,9 +20,7 @@
 - AWS permissions for Connect, S3, Lambda, IAM
 - **For SAML**: SAML metadata XML file from your IdP
 
-## Workshop Steps
-
-### Step 1: Clone and Setup Environment
+## Step 1: Clone and Setup Environment
 
 ```bash
 git clone https://github.com/bloy.me.uk/elevai-connect.git
@@ -33,7 +30,7 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Step 2: Configure Pulumi
+## Step 2: Configure Pulumi
 
 ```bash
 pulumi login --local # Use Pulumi Cloud or local backend. S3 can be used: https://www.pulumi.com/docs/iac/concepts/state-and-backends/#using-a-diy-backend
@@ -45,7 +42,7 @@ Copy the example config:
 cp Pulumi.dev.yaml.example Pulumi.dev.yaml
 ```
 
-### Step 3: Edit Configuration
+## Step 3: Edit Configuration
 
 Edit `Pulumi.dev.yaml` and update:
 
@@ -61,27 +58,25 @@ Edit `Pulumi.dev.yaml` and update:
 - `billing:monthlyBudgetLimit` - Monthly budget in USD
 - `qconnect:enabled` - Enable Amazon Q (true/false)
 
-⚠️ **Warning:** `instanceAlias` and `identityManagementType` cannot be changed after deployment!
+> **Warning:** `instanceAlias` and `identityManagementType` cannot be changed after deployment!
 
-### Step 4: Preview Changes
+## Step 4: Preview Changes
 
-Ask Claude Code to run:
-```
+```bash
 pulumi preview --stack dev
 ```
 
-Review the resources to be created. Ask questions about anything unclear.
+Review the resources to be created.
 
-### Step 5: Deploy
+## Step 5: Deploy
 
-Ask Claude Code to deploy using the MCP tool (never use bash `pulumi up`):
+```bash
+pulumi up --stack dev
 ```
-Use the pulumi_up MCP tool to deploy with stack=dev
-```
 
-Wait for completion (~5-10 minutes).
+Wait for completion (~5-10 minutes). Review and approve the changes when prompted.
 
-### Step 6: View Outputs
+## Step 6: View Outputs
 
 ```bash
 pulumi stack output
@@ -93,7 +88,7 @@ Save important outputs:
 - S3 bucket names
 - Q Assistant ID (if enabled)
 
-### Step 7: Post-Deployment Manual Steps
+## Step 7: Post-Deployment Manual Steps
 
 Complete these in AWS Console (API limitations):
 
@@ -103,16 +98,18 @@ Open up AWS Console > Amazon Connect > Your instance > Flows
 2. **[Enable Lex Bot Management](https://docs.aws.amazon.com/connect/latest/adminguide/enable-bot-building.html)**
 3. Verify **Next Generation Amazon Connect** is enabled
 
-### Step 8: Verify Deployment
+For the full post-deployment checklist see [POST_DEPLOYMENT_STEPS.md](POST_DEPLOYMENT_STEPS.md).
+
+## Step 8: Verify Deployment
 
 - Log into Amazon Connect instance
 - Check email for SNS subscription confirmations
 - Verify CloudWatch alarms in AWS Console
 - Test basic functionality
 
-### Step 9: SAML Setup (if applicable)
+## Step 9: SAML Setup (if applicable)
 
-Follow the [SAML Configuration Guide](../../docs/SAML_SETUP_GUIDE.md) for:
+Follow the [SAML Configuration Guide](SAML_SETUP_GUIDE.md) for:
 - Finalizing IdP configuration
 - User assignment
 - Testing authentication
@@ -128,30 +125,7 @@ Follow the [SAML Configuration Guide](../../docs/SAML_SETUP_GUIDE.md) for:
 
 ## Next Steps
 
-- **Customize:** Add resources in `custom/` directory
-- **Monitor:** Review CloudWatch alarms and dashboards
-- **Learn:** Try the Amazon Q Knowledge Base workshop
+- **Customize:** Add resources in `custom/` directory - see [Custom Extensions Guide](CUSTOM_EXTENSIONS_GUIDE.md)
+- **Monitor:** Review CloudWatch alarms - see [Monitoring Guide](MONITORING_GUIDE.md)
+- **AI:** Set up Amazon Q knowledge base - see [Amazon Q Guide](AMAZON_Q_GUIDE.md)
 - **Scale:** Review service quotas for production
-
-## Using Claude Code
-
-Throughout this workshop, you can ask Claude Code:
-- "What's the current status?"
-- "Explain this config option"
-- "Preview my changes"
-- "Deploy the stack"
-- "What resources were created?"
-- "Help me troubleshoot [issue]"
-
-Claude Code can read your config, run Pulumi commands, and guide you through each step interactively.
-
-## Resources
-
-- [Project README](../../README.md) - Complete documentation
-- [SAML Setup Guide](../../docs/SAML_SETUP_GUIDE.md)
-- [Monitoring Guide](../../docs/MONITORING_GUIDE.md)
-- [Amazon Q Guide](../../docs/AMAZON_Q_GUIDE.md)
-
----
-
-**Need help?** Ask Claude Code any questions during the workshop!

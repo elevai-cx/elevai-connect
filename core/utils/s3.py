@@ -46,7 +46,7 @@ def create_logging_bucket(
         S3 bucket for access logs
     """
     bucket_args = {
-        "object_lock_enabled": True,
+        "object_lock_enabled": False,
         "tags": {**tags, "Purpose": "AccessLogs"},
     }
     if bucket_name:
@@ -162,7 +162,7 @@ def create_secure_s3_bucket(
     logging_bucket: Optional[aws.s3.Bucket] = None,
     archive_days: int = 90,
     deletion_days: int = 365,
-    enable_object_lock: bool = True,
+    enable_object_lock: bool = False,
     additional_policy_statements: Optional[list] = None,
     lifecycle_rules: Optional[list] = None,
     bucket_name: Optional[str] = None,
@@ -186,7 +186,7 @@ def create_secure_s3_bucket(
         logging_bucket: Optional bucket for access logs
         archive_days: Days before transitioning to IA storage (default: 90)
         deletion_days: Days before object expiration (default: 365)
-        enable_object_lock: Enable Object Lock (default: True)
+        enable_object_lock: Enable Object Lock (default: False)
         additional_policy_statements: Optional additional bucket policy statements
         lifecycle_rules: Optional custom lifecycle rules (overrides archive/deletion)
         bucket_name: Optional physical bucket name (if not provided, AWS auto-generates)

@@ -1,0 +1,874 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "8bbe65b0-b9ac-4c25-ade8-1ed9488b87bc",
+  "Metadata": {
+    "entryPointPosition": {
+      "x": 40,
+      "y": 40
+    },
+    "ActionMetadata": {
+      "VIP Caller": {
+        "position": {
+          "x": 939.2,
+          "y": 41.6
+        },
+        "isFriendlyName": true
+      },
+      "918c456e-73e0-45bc-b6b9-0ecca035465d": {
+        "position": {
+          "x": 1227.2,
+          "y": 41.6
+        }
+      },
+      "Blocked Caller": {
+        "position": {
+          "x": 941.6,
+          "y": 240.8
+        },
+        "isFriendlyName": true
+      },
+      "Check Language": {
+        "position": {
+          "x": 1216,
+          "y": 724.8
+        },
+        "isFriendlyName": true,
+        "conditionMetadata": [
+          {
+            "id": "205c182e-370a-4596-b422-2df75a00e2ff",
+            "operator": {
+              "name": "Equals",
+              "value": "Equals",
+              "shortDisplay": "="
+            },
+            "value": "es-ES"
+          }
+        ]
+      },
+      "ee6f0bf0-72b7-41ab-a809-015e3eab819c": {
+        "position": {
+          "x": 4133.6,
+          "y": 700
+        }
+      },
+      "Option_1": {
+        "position": {
+          "x": 3564.8,
+          "y": 710.4
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "Text": {
+            "useDynamic": true
+          }
+        },
+        "useDynamic": true
+      },
+      "Play HVM": {
+        "position": {
+          "x": 2983.2,
+          "y": 706.4
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "Text": {
+            "useDynamic": true
+          }
+        },
+        "useDynamic": true
+      },
+      "Check if HVM Active": {
+        "position": {
+          "x": 2703.2,
+          "y": 712
+        },
+        "isFriendlyName": true,
+        "conditions": [],
+        "conditionMetadata": [
+          {
+            "id": "a77a8a72-af01-4e18-ac96-96bcc99c705a",
+            "operator": {
+              "name": "Equals",
+              "value": "Equals",
+              "shortDisplay": "="
+            },
+            "value": "true"
+          }
+        ]
+      },
+      "Goodbye": {
+        "position": {
+          "x": 3853.6,
+          "y": 704.8
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "Text": {
+            "useDynamic": true
+          }
+        },
+        "useDynamic": true
+      },
+      "f75130d7-41f2-4e5c-8392-17eb8046249b": {
+        "position": {
+          "x": 3300.8,
+          "y": 709.6
+        },
+        "parameters": {
+          "Text": {
+            "useDynamic": true
+          }
+        },
+        "useDynamic": true,
+        "conditionMetadata": [
+          {
+            "id": "b6819f8e-dbe9-42a2-9991-e35f7fcabd77",
+            "value": "1"
+          },
+          {
+            "id": "8f356216-d46b-4973-be05-a1316d7237ac",
+            "value": "2"
+          }
+        ]
+      },
+      "Option 2 and Default": {
+        "position": {
+          "x": 3572,
+          "y": 913.6
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "Text": {
+            "useDynamic": true
+          }
+        },
+        "useDynamic": true
+      },
+      "8bbe65b0-b9ac-4c25-ade8-1ed9488b87bc": {
+        "position": {
+          "x": 157.6,
+          "y": 44
+        }
+      },
+      "Get Caller Status": {
+        "position": {
+          "x": 404,
+          "y": 34.4
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "DataTableId": {
+            "displayName": "Elevai-CallerStatusTable"
+          }
+        }
+      },
+      "Save Phone Data": {
+        "position": {
+          "x": 935.2,
+          "y": 1007.2
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "Attributes": {
+            "Language": {
+              "useDynamic": true
+            },
+            "AttributeGroup": {
+              "useDynamic": true
+            }
+          }
+        },
+        "dynamicParams": [
+          "Language",
+          "AttributeGroup"
+        ]
+      },
+      "Check Caller Status": {
+        "position": {
+          "x": 676,
+          "y": 39.2
+        },
+        "isFriendlyName": true,
+        "conditions": [],
+        "conditionMetadata": [
+          {
+            "id": "6a4ed6c3-4ae4-4652-9819-e5d0d74e9aa1",
+            "operator": {
+              "name": "Equals",
+              "value": "Equals",
+              "shortDisplay": "="
+            },
+            "value": "VIP"
+          },
+          {
+            "id": "61b70876-1176-4755-8d8e-eebefb53a3b1",
+            "operator": {
+              "name": "Equals",
+              "value": "Equals",
+              "shortDisplay": "="
+            },
+            "value": "BLOCKED"
+          }
+        ]
+      },
+      "Get Phone Data": {
+        "position": {
+          "x": 928,
+          "y": 728.8
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "DataTableId": {
+            "displayName": "Elevai-BrandTable"
+          }
+        }
+      },
+      "Set Voice": {
+        "position": {
+          "x": 1520,
+          "y": 722.4
+        },
+        "isFriendlyName": true,
+        "children": [
+          "Set Voice-W7uCJF1EMI"
+        ],
+        "parameters": {
+          "TextToSpeechVoice": {
+            "languageCode": "es-ES"
+          }
+        },
+        "overrideConsoleVoice": false,
+        "fragments": {
+          "SetContactData": "Set Voice-W7uCJF1EMI"
+        },
+        "overrideLanguageAttribute": true
+      },
+      "Set Voice-W7uCJF1EMI": {
+        "position": {
+          "x": 1520,
+          "y": 722.4
+        },
+        "isFriendlyName": true,
+        "dynamicParams": []
+      },
+      "Set Voice-copy-1": {
+        "position": {
+          "x": 1525.6,
+          "y": 933.6
+        },
+        "isFriendlyName": true,
+        "children": [
+          "Set Voice-copy-1-889SOoKTYB"
+        ],
+        "parameters": {
+          "TextToSpeechVoice": {
+            "languageCode": "en-GB"
+          }
+        },
+        "overrideConsoleVoice": false,
+        "fragments": {
+          "SetContactData": "Set Voice-copy-1-889SOoKTYB"
+        },
+        "overrideLanguageAttribute": true
+      },
+      "Set Voice-copy-1-889SOoKTYB": {
+        "position": {
+          "x": 1525.6,
+          "y": 933.6
+        },
+        "isFriendlyName": true,
+        "dynamicParams": []
+      },
+      "Get Attributes": {
+        "position": {
+          "x": 1838.4,
+          "y": 716.8
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "DataTableId": {
+            "displayName": "Elevai-AttributeGroupTable"
+          }
+        }
+      },
+      "Play Greeting": {
+        "position": {
+          "x": 2408.8,
+          "y": 708.8
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "Text": {
+            "useDynamic": true
+          }
+        },
+        "useDynamic": true
+      },
+      "Save Attributes": {
+        "position": {
+          "x": 1844,
+          "y": 945.6
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "Attributes": {
+            "post_contact_survey": {
+              "useDynamic": true
+            },
+            "Brand": {
+              "useDynamic": true
+            }
+          }
+        },
+        "dynamicParams": [
+          "post_contact_survey",
+          "Brand"
+        ]
+      },
+      "Get Messages": {
+        "position": {
+          "x": 2132.8,
+          "y": 710.4
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "DataTableId": {
+            "displayName": "Elevai-MessageGroupTable"
+          }
+        }
+      }
+    },
+    "Annotations": [
+      {
+        "type": "default",
+        "id": "d11ca0a9-42f7-4d39-9f92-86c3b7ae5bae",
+        "content": "This would not be needed for Chat / Email / WebRTC",
+        "actionId": "Get Phone Data",
+        "isFolded": true,
+        "position": {
+          "x": 1172.5,
+          "y": 1119
+        },
+        "size": {
+          "height": 295,
+          "width": 300
+        }
+      }
+    ],
+    "name": "Elevai Sample BUI",
+    "description": "Elevai sample flow demonstrating VIP and BLOCKED caller routing using data tables",
+    "type": "contactFlow",
+    "status": "published",
+    "hash": {}
+  },
+  "Actions": [
+    {
+      "Parameters": {
+        "Text": "Hello, VIP Caller! Let me get an agent for you now!"
+      },
+      "Identifier": "VIP Caller",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "918c456e-73e0-45bc-b6b9-0ecca035465d",
+        "Errors": [
+          {
+            "NextAction": "918c456e-73e0-45bc-b6b9-0ecca035465d",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {},
+      "Identifier": "918c456e-73e0-45bc-b6b9-0ecca035465d",
+      "Type": "DisconnectParticipant",
+      "Transitions": {}
+    },
+    {
+      "Parameters": {
+        "Text": "This service is not for you. Goodbye"
+      },
+      "Identifier": "Blocked Caller",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "918c456e-73e0-45bc-b6b9-0ecca035465d",
+        "Errors": [
+          {
+            "NextAction": "918c456e-73e0-45bc-b6b9-0ecca035465d",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "ComparisonValue": "$.DataTables.GetPhone.language"
+      },
+      "Identifier": "Check Language",
+      "Type": "Compare",
+      "Transitions": {
+        "NextAction": "Set Voice-copy-1",
+        "Conditions": [
+          {
+            "NextAction": "Set Voice",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "es-ES"
+              ]
+            }
+          }
+        ],
+        "Errors": [
+          {
+            "NextAction": "Set Voice-copy-1",
+            "ErrorType": "NoMatchingCondition"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {},
+      "Identifier": "ee6f0bf0-72b7-41ab-a809-015e3eab819c",
+      "Type": "DisconnectParticipant",
+      "Transitions": {}
+    },
+    {
+      "Parameters": {
+        "Text": "$.DataTables.GetMessages.Option_1"
+      },
+      "Identifier": "Option_1",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "Goodbye",
+        "Errors": [
+          {
+            "NextAction": "Goodbye",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "Text": "$.DataTables.GetMessages.Sit_HighVolume"
+      },
+      "Identifier": "Play HVM",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "f75130d7-41f2-4e5c-8392-17eb8046249b",
+        "Errors": [
+          {
+            "NextAction": "f75130d7-41f2-4e5c-8392-17eb8046249b",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "ComparisonValue": "$.DataTables.GetMessages.Sit_HighVolume_Active"
+      },
+      "Identifier": "Check if HVM Active",
+      "Type": "Compare",
+      "Transitions": {
+        "NextAction": "f75130d7-41f2-4e5c-8392-17eb8046249b",
+        "Conditions": [
+          {
+            "NextAction": "Play HVM",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "true"
+              ]
+            }
+          }
+        ],
+        "Errors": [
+          {
+            "NextAction": "f75130d7-41f2-4e5c-8392-17eb8046249b",
+            "ErrorType": "NoMatchingCondition"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "Text": "$.DataTables.GetMessages.Goodbye"
+      },
+      "Identifier": "Goodbye",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "ee6f0bf0-72b7-41ab-a809-015e3eab819c",
+        "Errors": [
+          {
+            "NextAction": "ee6f0bf0-72b7-41ab-a809-015e3eab819c",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "Text": "$.DataTables.GetMessages.Menu",
+        "StoreInput": "False",
+        "InputTimeLimitSeconds": "5"
+      },
+      "Identifier": "f75130d7-41f2-4e5c-8392-17eb8046249b",
+      "Type": "GetParticipantInput",
+      "Transitions": {
+        "NextAction": "Option 2 and Default",
+        "Conditions": [
+          {
+            "NextAction": "Option_1",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "1"
+              ]
+            }
+          },
+          {
+            "NextAction": "Option 2 and Default",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "2"
+              ]
+            }
+          }
+        ],
+        "Errors": [
+          {
+            "NextAction": "Option 2 and Default",
+            "ErrorType": "InputTimeLimitExceeded"
+          },
+          {
+            "NextAction": "Option 2 and Default",
+            "ErrorType": "NoMatchingCondition"
+          },
+          {
+            "NextAction": "Option 2 and Default",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "Text": "$.DataTables.GetMessages.Option_2"
+      },
+      "Identifier": "Option 2 and Default",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "Goodbye",
+        "Errors": [
+          {
+            "NextAction": "Goodbye",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "FlowLoggingBehavior": "Enabled"
+      },
+      "Identifier": "8bbe65b0-b9ac-4c25-ade8-1ed9488b87bc",
+      "Type": "UpdateFlowLoggingBehavior",
+      "Transitions": {
+        "NextAction": "Get Caller Status"
+      }
+    },
+    {
+      "Parameters": {
+        "DataTableId": "{{CALLER_TABLE_ARN}}",
+        "Queries": [
+          {
+            "QueryName": "checknumber",
+            "Attributes": [
+              "status"
+            ],
+            "PrimaryValues": [
+              {
+                "AttributeName": "e164",
+                "Value": "$.CustomerEndpoint.Address"
+              }
+            ]
+          }
+        ]
+      },
+      "Identifier": "Get Caller Status",
+      "Type": "EvaluateDataTableValues",
+      "Transitions": {
+        "NextAction": "Check Caller Status",
+        "Errors": [
+          {
+            "NextAction": "Check Caller Status",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "Attributes": {
+          "Language": "$.DataTables.GetPhone.language",
+          "AttributeGroup": "$.DataTables.GetPhone.attribute_group"
+        },
+        "TargetContact": "Current"
+      },
+      "Identifier": "Save Phone Data",
+      "Type": "UpdateContactAttributes",
+      "Transitions": {
+        "NextAction": "Check Language",
+        "Errors": [
+          {
+            "NextAction": "Check Language",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "ComparisonValue": "$.DataTables.checknumber.status"
+      },
+      "Identifier": "Check Caller Status",
+      "Type": "Compare",
+      "Transitions": {
+        "NextAction": "Get Phone Data",
+        "Conditions": [
+          {
+            "NextAction": "VIP Caller",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "VIP"
+              ]
+            }
+          },
+          {
+            "NextAction": "Blocked Caller",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "BLOCKED"
+              ]
+            }
+          }
+        ],
+        "Errors": [
+          {
+            "NextAction": "Get Phone Data",
+            "ErrorType": "NoMatchingCondition"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "DataTableId": "{{BRAND_TABLE_ARN}}",
+        "Queries": [
+          {
+            "QueryName": "GetPhone",
+            "Attributes": [
+              "attribute_group",
+              "language"
+            ],
+            "PrimaryValues": [
+              {
+                "AttributeName": "e164",
+                "Value": "$.SystemEndpoint.Address"
+              }
+            ]
+          }
+        ]
+      },
+      "Identifier": "Get Phone Data",
+      "Type": "EvaluateDataTableValues",
+      "Transitions": {
+        "NextAction": "Save Phone Data",
+        "Errors": [
+          {
+            "NextAction": "Save Phone Data",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "TextToSpeechVoice": "Enrique"
+      },
+      "Identifier": "Set Voice",
+      "Type": "UpdateContactTextToSpeechVoice",
+      "Transitions": {
+        "NextAction": "Set Voice-W7uCJF1EMI",
+        "Errors": [
+          {
+            "NextAction": "Get Attributes",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "LanguageCode": "es-ES"
+      },
+      "Identifier": "Set Voice-W7uCJF1EMI",
+      "Type": "UpdateContactData",
+      "Transitions": {
+        "NextAction": "Get Attributes",
+        "Errors": [
+          {
+            "NextAction": "Get Attributes",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "TextToSpeechVoice": "Amy"
+      },
+      "Identifier": "Set Voice-copy-1",
+      "Type": "UpdateContactTextToSpeechVoice",
+      "Transitions": {
+        "NextAction": "Set Voice-copy-1-889SOoKTYB",
+        "Errors": [
+          {
+            "NextAction": "Get Attributes",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "LanguageCode": "en-GB"
+      },
+      "Identifier": "Set Voice-copy-1-889SOoKTYB",
+      "Type": "UpdateContactData",
+      "Transitions": {
+        "NextAction": "Get Attributes",
+        "Errors": [
+          {
+            "NextAction": "Get Attributes",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "DataTableId": "{{ATTRIBUTE_GROUP_TABLE_ARN}}",
+        "Queries": [
+          {
+            "QueryName": "GetAttributes",
+            "Attributes": [
+              "department",
+              "brand",
+              "post_contact_survey"
+            ],
+            "PrimaryValues": [
+              {
+                "AttributeName": "attribute_Group",
+                "Value": "$.Attributes.AttributeGroup"
+              }
+            ]
+          }
+        ]
+      },
+      "Identifier": "Get Attributes",
+      "Type": "EvaluateDataTableValues",
+      "Transitions": {
+        "NextAction": "Save Attributes",
+        "Errors": [
+          {
+            "NextAction": "Save Attributes",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "Text": "$.DataTables.GetMessages.Greeting"
+      },
+      "Identifier": "Play Greeting",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "Check if HVM Active",
+        "Errors": [
+          {
+            "NextAction": "Check if HVM Active",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "Attributes": {
+          "post_contact_survey": "$.DataTables.GetAttributes.post_contact_survey",
+          "Brand": "$.DataTables.GetAttributes.brand",
+          "Department": "GetAttributes.Department"
+        },
+        "TargetContact": "Current"
+      },
+      "Identifier": "Save Attributes",
+      "Type": "UpdateContactAttributes",
+      "Transitions": {
+        "NextAction": "Get Messages",
+        "Errors": [
+          {
+            "NextAction": "Get Messages",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "DataTableId": "{{MESSAGE_GROUP_TABLE_ARN}}",
+        "Queries": [
+          {
+            "QueryName": "GetMessages",
+            "Attributes": [
+              "Option_2",
+              "Sit_HighVolume_Active",
+              "Option_1",
+              "Sit_HighVolume",
+              "Greeting",
+              "Menu",
+              "Goodbye"
+            ],
+            "PrimaryValues": [
+              {
+                "AttributeName": "message_group",
+                "Value": "IT Helpdesk"
+              },
+              {
+                "AttributeName": "language",
+                "Value": "$.Attributes.Language"
+              }
+            ]
+          }
+        ]
+      },
+      "Identifier": "Get Messages",
+      "Type": "EvaluateDataTableValues",
+      "Transitions": {
+        "NextAction": "Play Greeting",
+        "Errors": [
+          {
+            "NextAction": "Play Greeting",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    }
+  ]
+}

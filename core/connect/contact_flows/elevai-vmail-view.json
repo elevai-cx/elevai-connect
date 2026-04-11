@@ -1,0 +1,60 @@
+{
+  "Template": {
+    "Head": {
+      "Configuration": {
+        "Layout": {
+          "Columns": [12]
+        }
+      },
+      "Integrations": [],
+      "Title": "Elevai-vmail"
+    },
+    "Body": [
+      {
+        "_id": "Container_1775822597528",
+        "Type": "Container",
+        "Props": {
+          "HideBorder": false,
+          "Visibility": true
+        },
+        "Content": [
+          {
+            "_id": "vmail_transcript",
+            "Type": "DataSection",
+            "Props": {
+              "Heading": "Voicemail",
+              "Items": "$.vmail_transcript.Items",
+              "IsEditable": false,
+              "Edit": "Update"
+            },
+            "Content": [],
+            "Configuration": {
+              "Layout": {
+                "Columns": 12
+              }
+            }
+          },
+          {
+            "_id": "vmail_player",
+            "Type": "Application",
+            "Props": {
+              "AppIdentifier": "Elevai Toolkit",
+              "Path": "$.vmail_player.Path"
+            },
+            "Content": [],
+            "Configuration": {
+              "Style": {
+                "--application-height": "200px"
+              }
+            }
+          }
+        ],
+        "Configuration": {
+          "Layout": {
+            "Columns": 12
+          }
+        }
+      }
+    ]
+  }
+}

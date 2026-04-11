@@ -1,0 +1,114 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "e88455a5-6174-4b2c-ad22-62fc955b8a7c",
+  "Metadata": {
+    "entryPointPosition": {
+      "x": 40,
+      "y": 40
+    },
+    "ActionMetadata": {
+      "e88455a5-6174-4b2c-ad22-62fc955b8a7c": {
+        "position": {
+          "x": 182.4,
+          "y": 39.2
+        }
+      },
+      "d56dc7b0-e14e-4d40-b49a-2a7d96a6cad1": {
+        "position": {
+          "x": 1385.6,
+          "y": 49.6
+        }
+      },
+      "36c74835-5d9b-499b-9f4d-306152c20848": {
+        "position": {
+          "x": 1092.8,
+          "y": 44.8
+        }
+      },
+      "2821d9f2-fe6e-4192-88df-24fa07ee02b3": {
+        "position": {
+          "x": 779.2,
+          "y": 43.2
+        },
+        "parameters": {
+          "FlowModuleId": {
+            "displayName": "Elevai Vmail",
+            "Alias": {
+              "displayName": "$LATEST"
+            }
+          }
+        },
+        "contactFlowModuleName": "Elevai Vmail"
+      }
+    },
+    "Annotations": [],
+    "name": "Elevai Sample Vmail",
+    "description": "Elevai sample flow for voicemail demo",
+    "type": "contactFlow",
+    "status": "PUBLISHED",
+    "hash": {}
+  },
+  "Actions": [
+    {
+      "Parameters": {
+        "FlowLoggingBehavior": "Enabled"
+      },
+      "Identifier": "e88455a5-6174-4b2c-ad22-62fc955b8a7c",
+      "Type": "UpdateFlowLoggingBehavior",
+      "Transitions": {
+        "NextAction": "2821d9f2-fe6e-4192-88df-24fa07ee02b3"
+      }
+    },
+    {
+      "Parameters": {},
+      "Identifier": "d56dc7b0-e14e-4d40-b49a-2a7d96a6cad1",
+      "Type": "DisconnectParticipant",
+      "Transitions": {}
+    },
+    {
+      "Parameters": {
+        "SkipWhenDTMFBufferEnabled": "false",
+        "Text": "Goodbye"
+      },
+      "Identifier": "36c74835-5d9b-499b-9f4d-306152c20848",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "d56dc7b0-e14e-4d40-b49a-2a7d96a6cad1",
+        "Errors": [
+          {
+            "NextAction": "d56dc7b0-e14e-4d40-b49a-2a7d96a6cad1",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "FlowModuleId": "{{VMAIL_MODULE_ID}}",
+        "Input": {
+          "elevai-vmail-destination-channel": "task",
+          "elevai-vmail-genai-summary": "true",
+          "elevai-vmail-terminating-key": "?",
+          "elevai-vmail-loops": "3",
+          "elevai-vmail-queue-arn": "{{SAMPLE_QUEUE_ARN}}",
+          "elevai-vmail-customer-id": ""
+        }
+      },
+      "Identifier": "2821d9f2-fe6e-4192-88df-24fa07ee02b3",
+      "Type": "InvokeFlowModule",
+      "Transitions": {
+        "NextAction": "36c74835-5d9b-499b-9f4d-306152c20848",
+        "Errors": [
+          {
+            "NextAction": "36c74835-5d9b-499b-9f4d-306152c20848",
+            "ErrorType": "NoMatchingCondition"
+          },
+          {
+            "NextAction": "36c74835-5d9b-499b-9f4d-306152c20848",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    }
+  ]
+}

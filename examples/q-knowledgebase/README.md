@@ -18,7 +18,7 @@ As part of the elevai-connect deployment includes a pre-packaged Amazon Q conten
 
 2. Navigate to the S3 bucket in AWS Console
 
-3. Upload the following files from this workshop folder:
+3. Upload the following files from the `examples/q-knowledgebase/` folder:
    - `FAQ for Current Account.pdf`
    - `FAQ for Current Account.meta.json`
    - `FAQ for Mortgage Account.pdf`
@@ -54,7 +54,7 @@ As part of the elevai-connect deployment includes a pre-packaged Amazon Q conten
 
 3. In the contact flow editor, click the dropdown arrow next to **Save** and select **Import flow (beta)**
 
-4. Select the file `Amazon Q Sample.json` from this workshop folder
+4. Select the file `Amazon Q Sample.json` from the `examples/q-knowledgebase/` folder
 
 5. Review the imported flow and update the 4 blocks as called out in the template.
 

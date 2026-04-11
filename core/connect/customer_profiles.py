@@ -24,13 +24,12 @@ import pulumi
 import pulumi_aws as aws
 
 from ..utils.naming import create_name, create_logical_name
-from ..post_deployment_tracker import add_manual_step
 
 
 def create_customer_profiles_integration(
     connect_instance: aws.connect.Instance,
     kms_key: aws.kms.Key,
-    tags: Dict[str, str]
+    tags: Dict[str, str],
 ) -> Optional[Dict[str, any]]:
     """
     Create Amazon Connect Customer Profiles domain and integration.
@@ -101,14 +100,18 @@ def create_customer_profiles_integration(
     
     # Create Customer Profiles domain
     domain = _create_customer_profiles_domain(kms_key, tags, default_expiration_days)
-    
-    # Register manual setup step
+
+    # The domain association with the Connect instance (Connect console → Data storage
+    # → Customer Profiles → Select domain) has no public AWS API and must be done manually.
     _register_manual_setup_step(auto_association_type, error_queue_enabled)
-    
+
     if error_queue:
         pulumi.export("customer_profiles_error_queue_name", error_queue.name)
         pulumi.export("customer_profiles_error_queue_arn", error_queue.arn)
-    
+
+    pulumi.export("customer_profiles_domain_name", domain.domain_name)
+    pulumi.export("customer_profiles_domain_arn", domain.arn)
+
     return {
         "domain": domain,
         "error_queue": error_queue,
@@ -234,18 +237,12 @@ def _register_manual_setup_step(
     auto_association_type: str,
     error_queue_enabled: bool
 ) -> None:
-    """
-    Register Customer Profiles manual setup step with the tracker.
-    
-    Args:
-        auto_association_type: The configured auto-association type
-        error_queue_enabled: Whether error queue is enabled
-    """
+    """Register Customer Profiles domain association as a manual post-deployment step."""
+    from ..post_deployment_tracker import add_manual_step
     details = {
         "Auto-Association Type": auto_association_type,
         "Error Queue Enabled": str(error_queue_enabled)
     }
-    
     add_manual_step(
         title="Associate Customer Profiles domain with Connect instance",
         doc_link="docs/POST_DEPLOYMENT_STEPS.md#3-customer-profiles-domain-association",

@@ -102,9 +102,10 @@ def create_lambda_role(tags: Dict[str, str]) -> aws.iam.Role:
     
     # Create custom policy for the Connect Utils Lambda function
     # This policy grants permissions for:
-    # - S3: Access to Connect recordings and storage buckets
+    # - S3: Access to Connect recordings and storage buckets (including vmail)
     # - Connect: Contact recording, attributes, and metadata operations
     # - QConnect: Amazon Q session management for agent assistance
+    # - KMS: Decrypt data encrypted with Connect data key
     lambda_policy = aws.iam.RolePolicy(
         "connect-utils-lambda-custom-policy",
         role=lambda_role.id,
@@ -119,6 +120,23 @@ def create_lambda_role(tags: Dict[str, str]) -> aws.iam.Role:
                         "wisdom:UpdateSession"
                     ],
                     "Resource": "*",
+                },
+                {
+                    "Sid": "KMSDecryptConnectData",
+                    "Effect": "Allow",
+                    "Action": [
+                        "kms:Decrypt",
+                        "kms:DescribeKey"
+                    ],
+                    "Resource": "*",
+                },
+                {
+                    "Sid": "S3BucketAccess",
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:GetObject"
+                    ],
+                    "Resource": "arn:aws:s3:::*",
                 },
             ],
         }),

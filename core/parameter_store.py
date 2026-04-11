@@ -21,6 +21,7 @@ interface for customers to extend the infrastructure using their IaC of choice.
 All parameters use the prefix: /elevai/
 """
 
+from __future__ import annotations
 from typing import Dict, Any, Optional
 import pulumi
 import pulumi_aws as aws
@@ -342,6 +343,27 @@ def create_parameter_store_items(
                 f"{prefix}/customer-profiles/error-queue/arn",
                 error_queue.arn,
                 "Customer Profiles error reporting queue ARN",
+                tags
+            )
+    
+    # Voicemail S3 bucket (always deployed)
+    vmail = core_resources.get("vmail")
+    if vmail:
+        vmail_bucket = vmail.get("vmail_bucket")
+        if vmail_bucket:
+            parameters["vmail_bucket_name"] = _create_parameter(
+                "s3-vmail-name",
+                f"{prefix}/s3/vmail/name",
+                vmail_bucket.id,
+                "S3 bucket name for voicemail",
+                tags
+            )
+            
+            parameters["vmail_bucket_arn"] = _create_parameter(
+                "s3-vmail-arn",
+                f"{prefix}/s3/vmail/arn",
+                vmail_bucket.arn,
+                "S3 bucket ARN for voicemail",
                 tags
             )
     

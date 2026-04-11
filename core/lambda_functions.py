@@ -20,7 +20,7 @@ Creates Connect-specific Lambda functions using reusable utilities.
 Naming Convention: <stage>-lambda-<purpose>
 """
 
-from typing import Dict
+from typing import Dict, Optional
 import pulumi_aws as aws
 
 from .utils import create_lambda_with_requirements
@@ -29,7 +29,7 @@ from .utils import create_lambda_with_requirements
 def create_lambda_functions(
     connect_instance: aws.connect.Instance,
     iam_role: aws.iam.Role,
-    tags: Dict[str, str]
+    tags: Dict[str, str],
 ) -> Dict[str, aws.lambda_.Function]:
     """
     Create Lambda functions for Amazon Connect integrations.
