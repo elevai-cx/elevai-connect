@@ -23,18 +23,17 @@ from typing import Dict, Any
 import pulumi
 
 from .connect import (
-    create_connect_instance, 
-    create_s3_buckets, 
+    create_connect_instance,
+    create_s3_buckets,
     create_iam_resources,
     create_customer_profiles_integration,
     create_cases_domain,
 )
-from .connect.vmail import _create_beep_prompt, _create_vmail_contact_flow
+from .connect.bui import create_bui_infrastructure, create_bui_sample_flow
 from .lambda_functions import create_lambda_functions
 from .qconnect import create_qconnect_integration, create_qconnect_knowledge_bucket
 from .kms import create_connect_data_key
-
-# Import alerting infrastructure
+from .amplify import create_amplify_app
 from .alerting import (
     create_alerting_infrastructure,
     create_lambda_alarms,
@@ -42,7 +41,7 @@ from .alerting import (
     create_sqs_alarms,
     create_billing_alarms,
     create_kinesis_data_stream_alarms,
-    create_kinesis_video_stream_alarms
+    create_kinesis_video_stream_alarms,
 )
 from .parameter_store import create_parameter_store_items, export_parameter_store_info
 from .post_deployment_tracker import print_manual_steps_summary
@@ -85,16 +84,14 @@ def create_core_infrastructure(tags: Dict[str, str]) -> Dict[str, Any]:
     resources["connect_instance_arn"] = connect_instance.arn
     resources["data_streams"] = data_streams
     resources["kvs_config"] = kvs_config
-
+    
     # Create Lambda functions
     lambda_functions = create_lambda_functions(
         connect_instance=connect_instance,
         iam_role=iam_resources["lambda_role"],
-        tags=tags
+        tags=tags,
     )
     resources["lambda_functions"] = lambda_functions
-    
-    # Create Amazon Q (QConnect) integration (optional)
     config = pulumi.Config("qconnect")
     if config.get_bool("enabled") or False:
         # Create dedicated S3 bucket for knowledge base content and configuration
@@ -114,6 +111,7 @@ def create_core_infrastructure(tags: Dict[str, str]) -> Dict[str, Any]:
     # Create Customer Profiles integration (required for Cases)
     customer_profiles_config = pulumi.Config("customerProfiles")
     cases_domain = None
+    customer_profiles_resources = None
     if customer_profiles_config.get_bool("enabled") or False:
         customer_profiles_resources = create_customer_profiles_integration(
             connect_instance=connect_instance,
@@ -132,8 +130,32 @@ def create_core_infrastructure(tags: Dict[str, str]) -> Dict[str, Any]:
             )
             resources["cases_domain"] = cases_domain
     
+    # Create Amplify app (Connect Agent Workspace frontend)
+    # Created before vmail so the URL can be passed for CORS configuration
+    amplify_resources = create_amplify_app(
+        connect_instance=connect_instance,
+        tags=tags,
+    )
+    resources["amplify"] = amplify_resources
+
+    # Create Business User Interface (data tables, views, workspace)
+    bui_resources = create_bui_infrastructure(
+        connect_instance=connect_instance,
+        tags=tags,
+    )
+    resources["bui"] = bui_resources
+
+    # Create the BUI sample contact flow
+    bui_sample_flow = create_bui_sample_flow(
+        connect_instance=connect_instance,
+        bui_resources=bui_resources,
+        tags=tags,
+    )
+    resources["bui_sample_flow"] = bui_sample_flow
+
     # Create voicemail infrastructure (after cases_domain so it can use it if available)
-    from .connect.vmail import create_vmail_infrastructure
+    from .connect.vmail import create_vmail_infrastructure, create_vmail_routing_lambda
+
     vmail_resources = create_vmail_infrastructure(
         connect_instance=connect_instance,
         call_recordings_bucket=s3_buckets["recordings"],
@@ -142,8 +164,24 @@ def create_core_infrastructure(tags: Dict[str, str]) -> Dict[str, Any]:
         logging_bucket=s3_buckets["logging"],
         utils_lambda=lambda_functions["utils"],
         cases_domain=cases_domain,
+        amplify_url=amplify_resources["url"],
     )
     resources["vmail"] = vmail_resources
+    
+    # Create vmail routing Lambda (after task template is created)
+    if vmail_resources.get("task_template"):
+        routing_lambda = create_vmail_routing_lambda(
+            connect_instance=connect_instance,
+            vmail_bucket=vmail_resources["vmail_bucket"],
+            transcription_queue=vmail_resources["transcription_queue"],
+            routing_role=vmail_resources["routing_role"],
+            task_template=vmail_resources["task_template"],
+            tags=tags,
+            cases_domain=cases_domain,
+            case_template=vmail_resources.get("case_template"),
+            customer_profiles_domain=customer_profiles_resources.get("domain") if customer_profiles_resources else None,
+        )
+        vmail_resources["routing_lambda"] = routing_lambda
     
     # Create CloudWatch alarms for all resources
     # Check if alerting is enabled (default: true)

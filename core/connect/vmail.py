@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Voicemail Solution for Amazon Connect (elevai-connect-vmail)
+Voicemail Solution for Amazon Connect (elevai-vmail)
 
 Architecture:
   Connect DISCONNECTED event
@@ -64,6 +64,9 @@ def create_vmail_infrastructure(
     logging_bucket: aws.s3.Bucket,
     utils_lambda: Optional[aws.lambda_.Function] = None,
     cases_domain: Optional[Dict] = None,
+    task_contact_flow_arn: Optional[pulumi.Output] = None,
+    task_template_arn: Optional[pulumi.Output] = None,
+    amplify_url: Optional[pulumi.Output] = None,
 ) -> Dict:
     """
     Create all infrastructure for the voicemail feature.
@@ -76,21 +79,25 @@ def create_vmail_infrastructure(
         logging_bucket: S3 bucket for access logs
         utils_lambda: Optional utils Lambda function for contact flow module
         cases_domain: Optional Cases domain dict (from create_cases_domain)
+        task_contact_flow_arn: Pre-created task contact flow ARN (Output), created
+            externally after the utils Lambda so the ARN can be substituted into
+            the flow JSON. Used by the task template.
+        task_template_arn: Pre-created task template ARN (Output), passed in when
+            the template is created externally (after the task flow ARN is known).
 
     Returns:
         Dictionary of created resources
     """
-    vmail_tags = {**tags, "Feature": "elevai-connect-vmail"}
+    vmail_tags = {**tags, "Feature": "elevai-vmail"}
 
     # ------------------------------------------------------------------ #
     # Shared storage                                                       #
     # ------------------------------------------------------------------ #
-    vmail_bucket = _create_vmail_bucket(vmail_tags, kms_key, logging_bucket)
+    vmail_bucket = _create_vmail_bucket(vmail_tags, kms_key, logging_bucket, amplify_url=amplify_url)
 
-    # Grant Transcribe permission to use the KMS key when reading/writing
-    # vmail bucket objects. Transcribe operates as its own service principal
-    # so it cannot use the Lambda role's KMS permissions.
-    _create_transcribe_kms_grant(kms_key, vmail_tags)
+    # Transcribe permission to use the KMS key is granted via the key policy
+    # in core/kms.py (Transcribe service principal in policy statement).
+    # KMS grants do not support service principals as grantees.
 
     # ------------------------------------------------------------------ #
     # Processor Lambda  (Connect event → trim WAV → start Transcribe)    #
@@ -152,21 +159,46 @@ def create_vmail_infrastructure(
     _create_connect_eventbridge_rule(main_queue, vmail_tags)
 
     # ------------------------------------------------------------------ #
-    # Task Contact Flow (created first — ARN needed by task template)     #
+    # View + Guide (step-by-step guide for agent workspace)              #
     # ------------------------------------------------------------------ #
-    task_contact_flow, task_contact_flow_id = _create_task_contact_flow(
-        connect_instance=connect_instance,
-        tags=vmail_tags,
-    )
+    vmail_view = None
+    guide_flow = None
+    if utils_lambda is not None:
+        vmail_view = _create_vmail_view(
+            connect_instance=connect_instance,
+            tags=vmail_tags,
+        )
+        guide_flow = _create_guide_contact_flow(
+            connect_instance=connect_instance,
+            utils_lambda=utils_lambda,
+            vmail_view=vmail_view,
+            tags=vmail_tags,
+        )
 
     # ------------------------------------------------------------------ #
-    # Task Template                                                        #
+    # Task Contact Flow + Template                                         #
     # ------------------------------------------------------------------ #
-    task_template = _create_task_template(
-        connect_instance=connect_instance,
-        task_contact_flow_arn=task_contact_flow.contact_flow_arn,
-        tags=vmail_tags,
-    )
+    # The task flow is created externally in __init__.py (after the utils
+    # Lambda) so the Lambda ARN can be substituted into the flow JSON.
+    # task_contact_flow_arn is that externally-created flow's ARN passed in
+    # as a Pulumi Output. If not provided, fall back to creating the flow
+    # here — but only when utils_lambda is available so placeholders can be
+    # substituted (mirrors the module's guard in _create_vmail_contact_flow).
+    if task_contact_flow_arn is None:
+        internal_flow, _ = _create_task_contact_flow(
+            connect_instance=connect_instance,
+            tags=vmail_tags,
+            guide_flow=guide_flow,
+        )
+        task_contact_flow_arn = internal_flow.contact_flow_arn
+
+    task_template = None
+    if task_contact_flow_arn is not None:
+        task_template = _create_task_template(
+            connect_instance=connect_instance,
+            task_contact_flow_arn=task_contact_flow_arn,
+            tags=vmail_tags,
+        )
 
     # ------------------------------------------------------------------ #
     # Case Template (optional - create before transcription Lambda)      #
@@ -179,7 +211,6 @@ def create_vmail_infrastructure(
             cases_domain=cases_domain["domain"],
             tags=vmail_tags,
         )
-        pulumi.log.info("Created voicemail case template")
 
     # ------------------------------------------------------------------ #
     # Transcription Lambda  (Transcribe COMPLETED → write JSON envelope)  #
@@ -205,56 +236,19 @@ def create_vmail_infrastructure(
         cases_domain=cases_domain,
     )
 
-    # Build environment variables with case template ID if available
-    transcription_env = {
-        "VMAIL_BUCKET": vmail_bucket.id,
-        "CONNECT_INSTANCE_ID": connect_instance.id,
-        "CONNECT_TASK_TEMPLATE_ID": task_template.arn.apply(
-            lambda arn: arn.split("/task-template/")[-1]
-        ),
-    }
-    
-    # Add Cases configuration if available
-    if cases_domain:
-        transcription_env["CASES_DOMAIN_ID"] = cases_domain["domain"].domain_id
-        if case_template:
-            # Extract just the template ID from the ARN
-            # ARN format: arn:aws:cases:region:account:domain/domain-id/template/template-id
-            transcription_env["CONNECT_CASE_TEMPLATE_ID"] = case_template.id.apply(
-                lambda arn: arn.split("/template/")[-1] if "/template/" in arn else arn
-            )
-        else:
-            transcription_env["CONNECT_CASE_TEMPLATE_ID"] = ""
-    else:
-        transcription_env["CASES_DOMAIN_ID"] = ""
-        transcription_env["CONNECT_CASE_TEMPLATE_ID"] = ""
-
-    routing_lambda = create_lambda_with_requirements(
-        purpose="vmail-routing",
-        lambda_dir=os.path.join(_LAMBDA_CODE_DIR, "vmail-routing"),
-        iam_role=routing_role,
-        tags=vmail_tags,
-        memory_size=256,
-        timeout=60,
-        environment_variables=transcription_env,
-    )
-
-    aws.lambda_.EventSourceMapping(
-        f"{stage}-lbd-vmail-routing-sqs-mapping",
-        event_source_arn=transcription_queue.arn,
-        function_name=routing_lambda.name,
-        batch_size=1,
-        function_response_types=["ReportBatchItemFailures"],
-        opts=pulumi.ResourceOptions(depends_on=[routing_lambda, transcription_queue]),
-    )
-
     _attach_sqs_eventbridge_policy(transcription_queue, purpose="routing")
     _create_transcribe_eventbridge_rule(transcription_queue, vmail_tags)
+
+    # routing Lambda is created separately via create_vmail_routing_lambda()
+    # after the task template ARN is known (task flow → task template → routing Lambda).
+    routing_lambda = None
 
     # ------------------------------------------------------------------ #
     # Contact flow module                                                  #
     # ------------------------------------------------------------------ #
     contact_flow = None
+    task_contact_flow = None
+    vmail_sample_flow = None
     if utils_lambda is not None:
         beep_prompt = _create_beep_prompt(
             connect_instance=connect_instance,
@@ -268,6 +262,13 @@ def create_vmail_infrastructure(
             tags=vmail_tags,
         )
 
+        # Create standalone vmail sample flow
+        vmail_sample_flow = _create_vmail_sample_flow(
+            connect_instance=connect_instance,
+            vmail_module=contact_flow,
+            tags=vmail_tags,
+        )
+
     # ------------------------------------------------------------------ #
     # Exports                                                              #
     # ------------------------------------------------------------------ #
@@ -277,13 +278,15 @@ def create_vmail_infrastructure(
     pulumi.export("vmail_dlq_url", dlq.url)
     pulumi.export("vmail_transcription_lambda_name", processor_lambda.name)
     pulumi.export("vmail_transcription_lambda_arn", processor_lambda.arn)
-    pulumi.export("vmail_routing_lambda_name", routing_lambda.name)
-    pulumi.export("vmail_routing_lambda_arn", routing_lambda.arn)
+    pulumi.export("vmail_routing_lambda_name", routing_lambda.name if routing_lambda else None)
+    pulumi.export("vmail_routing_lambda_arn", routing_lambda.arn if routing_lambda else None)
     pulumi.export("vmail_transcription_queue_url", transcription_queue.url)
     pulumi.export("vmail_transcription_dlq_url", transcription_dlq.url)
-    pulumi.export("vmail_task_template_id", task_template.id)
-    pulumi.export("vmail_task_contact_flow_id", task_contact_flow_id)
-    pulumi.export("vmail_task_contact_flow_arn", task_contact_flow.contact_flow_arn)
+    pulumi.export("vmail_task_template_id", task_template.id if task_template is not None else None)
+    pulumi.export("vmail_task_contact_flow_arn", task_contact_flow_arn)
+    pulumi.export("vmail_view_arn", vmail_view.view_arn if vmail_view is not None else None)
+    pulumi.export("vmail_guide_flow_arn", guide_flow.contact_flow_arn if guide_flow is not None else None)
+    pulumi.export("vmail_sample_flow_arn", vmail_sample_flow.contact_flow_arn if vmail_sample_flow is not None else None)
 
     return {
         "vmail_bucket": vmail_bucket,
@@ -296,9 +299,86 @@ def create_vmail_infrastructure(
         "transcription_queue": transcription_queue,
         "transcription_dlq": transcription_dlq,
         "contact_flow": contact_flow,
-        "task_template": task_template,
         "task_contact_flow": task_contact_flow,
+        "task_template": task_template,
+        "case_template": case_template,
+        "vmail_view": vmail_view,
+        "guide_flow": guide_flow,
+        "vmail_sample_flow": vmail_sample_flow,
     }
+
+
+# ---------------------------------------------------------------------------
+# Routing Lambda (public — created after task template is known)
+# ---------------------------------------------------------------------------
+
+def create_vmail_routing_lambda(
+    connect_instance: aws.connect.Instance,
+    vmail_bucket: aws.s3.Bucket,
+    transcription_queue: aws.sqs.Queue,
+    routing_role: aws.iam.Role,
+    task_template: aws_native.connect.TaskTemplate,
+    tags: Dict[str, str],
+    cases_domain: Optional[Dict] = None,
+    case_template: Optional[aws_native.cases.Template] = None,
+    customer_profiles_domain: Optional[aws.customerprofiles.Domain] = None,
+) -> aws.lambda_.Function:
+    """
+    Create the vmail-routing Lambda and wire it to the transcription SQS queue.
+
+    Called after the task template exists so CONNECT_TASK_TEMPLATE_ID is known.
+    """
+    vmail_tags = {**tags, "Feature": "elevai-vmail"}
+    stage = pulumi.get_stack()
+
+    env = {
+        "VMAIL_BUCKET": vmail_bucket.id,
+        "CONNECT_INSTANCE_ID": connect_instance.id,
+        "CONNECT_TASK_TEMPLATE_ID": task_template.arn.apply(
+            lambda arn: arn.split("/task-template/")[-1]
+        ),
+    }
+
+    if cases_domain:
+        env["CASES_DOMAIN_ID"] = cases_domain["domain"].domain_id
+        env["CONNECT_CASE_TEMPLATE_ID"] = (
+            case_template.id.apply(
+                lambda arn: arn.split("/template/")[-1] if "/template/" in arn else arn
+            )
+            if case_template else ""
+        )
+    else:
+        env["CASES_DOMAIN_ID"] = ""
+        env["CONNECT_CASE_TEMPLATE_ID"] = ""
+
+    if customer_profiles_domain:
+        env["CUSTOMER_PROFILES_DOMAIN_ARN"] = customer_profiles_domain.arn
+    else:
+        env["CUSTOMER_PROFILES_DOMAIN_ARN"] = ""
+
+    routing_lambda = create_lambda_with_requirements(
+        purpose="vmail-routing",
+        lambda_dir=os.path.join(_LAMBDA_CODE_DIR, "vmail-routing"),
+        iam_role=routing_role,
+        tags=vmail_tags,
+        memory_size=256,
+        timeout=60,
+        environment_variables=env,
+    )
+
+    aws.lambda_.EventSourceMapping(
+        f"{stage}-lbd-vmail-routing-sqs-mapping",
+        event_source_arn=transcription_queue.arn,
+        function_name=routing_lambda.name,
+        batch_size=1,
+        function_response_types=["ReportBatchItemFailures"],
+        opts=pulumi.ResourceOptions(depends_on=[routing_lambda, transcription_queue]),
+    )
+
+    pulumi.export("vmail_routing_lambda_name", routing_lambda.name)
+    pulumi.export("vmail_routing_lambda_arn", routing_lambda.arn)
+
+    return routing_lambda
 
 
 # ---------------------------------------------------------------------------
@@ -347,14 +427,14 @@ def _create_vmail_contact_flow(
     tags: Dict[str, str],
 ) -> aws_native.connect.ContactFlowModule:
     """
-    Deploy the elevai-connect-vmail contact flow module, injecting the
+    Deploy the elevai-vmail contact flow module, injecting the
     utils Lambda ARN and beep prompt ARN.
 
     Uses aws-native provider which supports the settings parameter properly.
     The Settings block (InputParameters/OutputParameters/Transitions) stays in content.
     The settings parameter is for the input schema that defines module parameters.
     """
-    flow_path = os.path.join(_CONTACT_FLOWS_DIR, "elevai-connect-vmail-module.json")
+    flow_path = os.path.join(_CONTACT_FLOWS_DIR, "elevai-vmail-module.json")
     with open(flow_path, "r") as f:
         flow_data = json.loads(f.read())
 
@@ -387,15 +467,150 @@ def _create_vmail_contact_flow(
     return aws_native.connect.ContactFlowModule(
         f"{stage}-cf-vmail",
         instance_arn=connect_instance.arn,
-        name="elevai-connect-vmail",
+        name="Elevai Vmail",
         description="Voicemail capture module — records a message and tags the contact",
         content=content,
         settings=settings_schema,
         state="ACTIVE",
-        tags=[aws_native.TagArgs(key=k, value=v) for k, v in {**tags, "Name": "elevai-connect-vmail"}.items()],
+        tags=[aws_native.TagArgs(key=k, value=v) for k, v in {**tags, "Name": "Elevai Vmail"}.items()],
         opts=pulumi.ResourceOptions(
             depends_on=[beep_prompt],
         ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# View (step-by-step guide)
+# ---------------------------------------------------------------------------
+
+def _create_vmail_view(
+    connect_instance: aws.connect.Instance,
+    tags: Dict[str, str],
+) -> aws_native.connect.View:
+    """
+    Create the Elevai-vmail view (step-by-step guide) that displays
+    the voicemail transcript and embedded audio player.
+    """
+    stage = pulumi.get_stack()
+
+    view_path = os.path.join(_CONTACT_FLOWS_DIR, "elevai-vmail-view.json")
+    with open(view_path, "r") as f:
+        view_data = json.loads(f.read())
+
+    return aws_native.connect.View(
+        f"{stage}-connect-view-vmail",
+        instance_arn=connect_instance.arn,
+        name="Elevai Vmail",
+        description="Voicemail step-by-step guide with transcript and audio player",
+        template=view_data["Template"],
+        actions=[],
+        tags=[aws_native.TagArgs(key=k, value=v) for k, v in {**tags, "Purpose": "Guide"}.items()],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Guide Contact Flow (event flow for agent workspace)
+# ---------------------------------------------------------------------------
+
+def _create_guide_contact_flow(
+    connect_instance: aws.connect.Instance,
+    utils_lambda: aws.lambda_.Function,
+    vmail_view: aws_native.connect.View,
+    tags: Dict[str, str],
+) -> aws_native.connect.ContactFlow:
+    """
+    Create the elevai-vmail-guide contact flow that triggers the Lambda
+    to get a presigned WAV URL and shows the voicemail view to the agent.
+
+    Set as an event flow (AgentBeforeContactWork) on the task contact flow.
+    """
+    stage = pulumi.get_stack()
+
+    flow_path = os.path.join(_CONTACT_FLOWS_DIR, "elevai-vmail-guide.json")
+    with open(flow_path, "r") as f:
+        flow_template = f.read()
+
+    content = pulumi.Output.all(
+        utils_lambda.arn,
+        utils_lambda.name,
+        vmail_view.view_arn,
+    ).apply(lambda args: flow_template
+        .replace("{{UTILS_LAMBDA_ARN}}", args[0])
+        .replace("{{UTILS_LAMBDA_NAME}}", args[1])
+        .replace("{{VMAIL_VIEW_ARN}}", f"{args[2]}:$LATEST")
+    )
+
+    return aws_native.connect.ContactFlow(
+        f"{stage}-cf-vmail-guide",
+        instance_arn=connect_instance.arn,
+        name="Elevai Vmail Guide",
+        description="Displays the voicemail transcript and audio player",
+        type="CONTACT_FLOW",
+        content=content,
+        state="ACTIVE",
+        tags=[aws_native.TagArgs(key=k, value=v) for k, v in {**tags, "Name": "Elevai Vmail Guide"}.items()],
+        opts=pulumi.ResourceOptions(depends_on=[vmail_view]),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Vmail Sample Contact Flow
+# ---------------------------------------------------------------------------
+
+def _create_vmail_sample_flow(
+    connect_instance: aws.connect.Instance,
+    vmail_module: aws_native.connect.ContactFlowModule,
+    tags: Dict[str, str],
+) -> aws_native.connect.ContactFlow:
+    """
+    Create the Elevai Sample Vmail contact flow.
+
+    A standalone sample flow that invokes the vmail module with demo
+    parameters. Can be assigned to a phone number directly.
+
+    Automatically looks up the "BasicQueue" ARN from the Connect instance
+    to pre-populate the queue input for the vmail module.
+    """
+    stage = pulumi.get_stack()
+
+    flow_path = os.path.join(_CONTACT_FLOWS_DIR, "elevai-sample-vmail.json")
+    with open(flow_path, "r") as f:
+        flow_template = f.read()
+
+    # Look up the "BasicQueue" ARN at deploy time via a Command resource.
+    # Every Connect instance has this queue by default.
+    basic_queue_lookup = command.local.Command(
+        f"{stage}-lookup-basic-queue",
+        create=connect_instance.id.apply(
+            lambda iid: (
+                f"aws connect list-queues --instance-id {iid}"
+                f" --queue-types STANDARD"
+                f" --query \"QueueSummaryList[?Name=='BasicQueue'].Arn | [0]\""
+                f" --output text"
+            )
+        ),
+        opts=pulumi.ResourceOptions(depends_on=[connect_instance]),
+    )
+    basic_queue_arn = basic_queue_lookup.stdout.apply(lambda s: s.strip())
+
+    content = pulumi.Output.all(
+        vmail_module.contact_flow_module_arn,
+        basic_queue_arn,
+    ).apply(lambda args: flow_template
+        .replace("{{VMAIL_MODULE_ID}}", f"{args[0].split('/')[-1]}:$LATEST")
+        .replace("{{SAMPLE_QUEUE_ARN}}", args[1])
+    )
+
+    return aws_native.connect.ContactFlow(
+        f"{stage}-cf-elevai-sample-vmail",
+        instance_arn=connect_instance.arn,
+        name="Elevai Sample Vmail",
+        description="Elevai sample flow for voicemail demo",
+        type="CONTACT_FLOW",
+        content=content,
+        state="ACTIVE",
+        tags=[aws_native.TagArgs(key=k, value=v) for k, v in {**tags, "Name": "Elevai Sample Vmail"}.items()],
+        opts=pulumi.ResourceOptions(depends_on=[vmail_module]),
     )
 
 
@@ -409,7 +624,7 @@ def _create_task_template(
     tags: Dict[str, str],
 ) -> aws_native.connect.TaskTemplate:
     """
-    Create the 'elevai-connect-vmail' task template.
+    Create the 'elevai-vmail' task template.
 
     Fields surfaced to agents in the CCP:
       - CallerNumber  (read-only, pre-populated by Lambda)
@@ -418,7 +633,7 @@ def _create_task_template(
     return aws_native.connect.TaskTemplate(
         f"{stage}-connect-vmail-task-template",
         instance_arn=connect_instance.arn,
-        name="elevai-connect-vmail",
+        name="elevai-vmail",
         description="Voicemail task — review recording and transcript, then action or close.",
         contact_flow_arn=task_contact_flow_arn,
         fields=[
@@ -443,6 +658,16 @@ def _create_task_template(
                 type=aws_native.connect.TaskTemplateFieldType.TEXT_AREA,
                 description="Add notes to the task",
             ),
+            aws_native.connect.TaskTemplateFieldArgs(
+                id=aws_native.connect.TaskTemplateFieldIdentifierArgs(name="AssignedUser"),
+                type=aws_native.connect.TaskTemplateFieldType.TEXT,
+                description="User this voicemail is assigned to.",
+            ),
+            aws_native.connect.TaskTemplateFieldArgs(
+                id=aws_native.connect.TaskTemplateFieldIdentifierArgs(name="AssignedQueue"),
+                type=aws_native.connect.TaskTemplateFieldType.TEXT,
+                description="Queue this voicemail is assigned to.",
+            ),
         ],
         constraints=aws_native.connect.ConstraintsPropertiesArgs(
             read_only_fields=[
@@ -454,6 +679,12 @@ def _create_task_template(
                 ),
                 aws_native.connect.TaskTemplateRequiredFieldInfoArgs(
                     id=aws_native.connect.TaskTemplateFieldIdentifierArgs(name="Transcript"),
+                ),
+                aws_native.connect.TaskTemplateRequiredFieldInfoArgs(
+                    id=aws_native.connect.TaskTemplateFieldIdentifierArgs(name="AssignedUser"),
+                ),
+                aws_native.connect.TaskTemplateRequiredFieldInfoArgs(
+                    id=aws_native.connect.TaskTemplateFieldIdentifierArgs(name="AssignedQueue"),
                 ),
             ],
             required_fields=[
@@ -480,13 +711,13 @@ def _create_task_template(
 def _create_task_contact_flow(
     connect_instance: aws.connect.Instance,
     tags: Dict[str, str],
+    guide_flow: Optional[aws_native.connect.ContactFlow] = None,
 ) -> tuple:
     """
-    Create a minimal task contact flow for voicemail tasks.
+    Create the task contact flow for voicemail tasks.
 
-    Tasks routed through this flow are transferred directly to the queue
-    specified in QueueId on StartTaskContact — no queue-set block is needed
-    because the SDK call already carries the destination queue.
+    Sets the target queue, configures the guide flow as the DefaultAgentUI
+    event hook (step-by-step guide), then transfers the task to the queue.
 
     Returns (contact_flow_resource, contact_flow_id_output)
     where contact_flow_id_output is a Pulumi Output[str] suitable for use
@@ -494,20 +725,30 @@ def _create_task_contact_flow(
     """
     stage = pulumi.get_stack()
 
-    flow_path = os.path.join(_CONTACT_FLOWS_DIR, "elevai-connect-vmail-task.json")
+    flow_path = os.path.join(_CONTACT_FLOWS_DIR, "elevai-vmail-task.json")
     with open(flow_path, "r") as f:
-        flow_content = f.read()
+        flow_template = f.read()
+
+    if guide_flow is not None:
+        content = guide_flow.contact_flow_arn.apply(
+            lambda arn: flow_template.replace("{{VMAIL_GUIDE_FLOW_ARN}}", arn)
+        )
+    else:
+        content = pulumi.Output.from_input(flow_template)
+
+    depends = [r for r in [guide_flow] if r is not None]
 
     # Use aws-native provider which goes through CloudFormation
     cf = aws_native.connect.ContactFlow(
         f"{stage}-cf-vmail-task",
         instance_arn=connect_instance.arn,
-        name="elevai-connect-vmail-task",
+        name="Elevai Vmail Task",
         description="Task contact flow for voicemail tasks.",
         type="CONTACT_FLOW",
-        content=flow_content,
+        content=content,
         state="ACTIVE",
-        tags=[aws_native.TagArgs(key=k, value=v) for k, v in {**tags, "Name": "elevai-connect-vmail-task"}.items()],
+        tags=[aws_native.TagArgs(key=k, value=v) for k, v in {**tags, "Name": "Elevai Vmail Task"}.items()],
+        opts=pulumi.ResourceOptions(depends_on=depends) if depends else None,
     )
 
     return cf, cf.contact_flow_arn.apply(lambda arn: arn.split("/")[-1])
@@ -530,7 +771,7 @@ def _create_vmail_case_template(
     layout = aws_native.cases.Layout(
         f"{stage}-cases-vmail-layout",
         domain_id=cases_domain.domain_id,
-        name="elevai-connect-vmail",
+        name="elevai-vmail",
         content=aws_native.cases.LayoutContentPropertiesArgs(
             basic=aws_native.cases.LayoutBasicLayoutArgs(
                 more_info=aws_native.cases.LayoutSectionsArgs(
@@ -552,6 +793,7 @@ def _create_vmail_case_template(
                                     aws_native.cases.LayoutFieldItemArgs(id="customer_id"),
                                     aws_native.cases.LayoutFieldItemArgs(id="summary"),
                                     aws_native.cases.LayoutFieldItemArgs(id="assigned_user"),
+                                    aws_native.cases.LayoutFieldItemArgs(id="assigned_queue"),
                                 ],
                             )
                         )
@@ -565,7 +807,7 @@ def _create_vmail_case_template(
     return aws_native.cases.Template(
         f"{stage}-cases-vmail-template",
         domain_id=cases_domain.domain_id,
-        name="elevai-connect-vmail",
+        name="elevai-vmail",
         description="Voicemail case template — review recording and transcript",
         required_fields=[
             aws_native.cases.TemplateRequiredFieldArgs(field_id="customer_id"),
@@ -588,6 +830,7 @@ def _create_vmail_bucket(
     tags: Dict[str, str],
     kms_key: aws.kms.Key,
     logging_bucket: aws.s3.Bucket,
+    amplify_url: Optional[pulumi.Output] = None,
 ) -> aws.s3.Bucket:
     # Transcribe accesses S3 directly as its own service principal — it does not
     # assume the Lambda role — so we must explicitly allow it in the bucket policy.
@@ -611,7 +854,7 @@ def _create_vmail_bucket(
         },
     ]
 
-    return create_secure_s3_bucket(
+    bucket = create_secure_s3_bucket(
         resource_name=create_logical_name("s3", "vmail"),
         purpose="VoicemailRecordings",
         tags=tags,
@@ -624,6 +867,27 @@ def _create_vmail_bucket(
         # buckets with Object Lock enabled (AWS service limitation).
         enable_object_lock=False,
     )
+
+    # CORS — allow the Amplify app to fetch presigned URLs directly from the browser
+    allowed_origins = pulumi.Output.from_input(
+        amplify_url if amplify_url is not None else pulumi.Output.from_input("*")
+    ).apply(lambda url: [url] if url != "*" else ["*"])
+
+    aws.s3.BucketCorsConfiguration(
+        create_logical_name("s3", "vmail-cors"),
+        bucket=bucket.id,
+        cors_rules=allowed_origins.apply(lambda origins: [
+            aws.s3.BucketCorsConfigurationCorsRuleArgs(
+                allowed_headers=["*"],
+                allowed_methods=["GET"],
+                allowed_origins=origins,
+                expose_headers=["ETag"],
+                max_age_seconds=3600,
+            )
+        ]),
+    )
+
+    return bucket
 
 
 # ---------------------------------------------------------------------------
@@ -795,6 +1059,7 @@ def _create_transcription_role(
                 "cases:GetCase",
                 "cases:UpdateCase",
                 "cases:CreateRelatedItem",
+                "cases:GetDomain"
             ],
             # Cases API does not support resource-level permissions for CreateCase;
             # wildcard is required.
@@ -808,8 +1073,16 @@ def _create_transcription_role(
         }, {
             "Effect": "Allow",
             # CreateRelatedItem with type=Contact requires connect:DescribeContact
+            # Assigning case to users and queue connect:DescribeQueue and connect:DescribeUser
             # permission on the contact ARN being associated with the case.
-            "Action": ["connect:DescribeContact"],
+            "Action": [
+                "connect:DescribeContact", 
+                "connect:ListInstances", 
+                "connect:ListIntegrationAssociations", 
+                "ds:DescribeDirectories", 
+                "connect:DescribeQueue", 
+                "connect:DescribeUser"
+            ],
             "Resource": "*",
         }])
         policy_statements = pulumi.Output.all(base_statements, cases_statement).apply(
@@ -829,31 +1102,6 @@ def _create_transcription_role(
 # KMS grant for Transcribe
 # ---------------------------------------------------------------------------
 
-def _create_transcribe_kms_grant(
-    kms_key: aws.kms.Key,
-    tags: Dict[str, str],
-) -> aws.kms.Grant:
-    """
-    Create a KMS grant allowing the Transcribe service principal to decrypt
-    and generate data keys for objects in the vmail bucket.
-
-    Transcribe uses the grant when it reads the uploaded WAV (which is
-    KMS-encrypted) and when it writes the raw transcript output.
-    """
-    region = aws.get_region()
-
-    stage = pulumi.get_stack()
-    return aws.kms.Grant(
-        f"{stage}-kms-vmail-transcribe-grant",
-        key_id=kms_key.id,
-        # Transcribe service principal is region-scoped; region.id is a plain str
-        grantee_principal=f"transcribe.{region.id}.amazonaws.com",
-        operations=[
-            "Decrypt",
-            "GenerateDataKey",
-            "DescribeKey",
-        ],
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -895,7 +1143,7 @@ def _create_connect_eventbridge_rule(
     target_queue: aws.sqs.Queue,
     tags: Dict[str, str],
 ) -> aws.cloudwatch.EventRule:
-    """EventBridge rule: Connect DISCONNECTED + elevai-connect-vmail=true → SQS."""
+    """EventBridge rule: Connect DISCONNECTED + elevai-vmail=true → SQS."""
     rule_name = create_name("eb", "vmail-disconnected")
     rule_logical = create_logical_name("eb", "vmail-disconnected")
 
@@ -908,7 +1156,7 @@ def _create_connect_eventbridge_rule(
             "detail-type": ["Amazon Connect Contact Event"],
             "detail": {
                 "eventType": ["DISCONNECTED"],
-                "tags": {"elevai-connect-vmail": ["true"]},
+                "tags": {"elevai-vmail": ["true"]},
             },
         }),
         state="ENABLED",

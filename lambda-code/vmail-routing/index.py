@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Voicemail Transcription Result Lambda (elevai-connect-vmail)
+Voicemail Transcription Result Lambda (elevai-vmail)
 
 Triggered by EventBridge rule:
   source: aws.transcribe
@@ -55,6 +55,7 @@ CONNECT_INSTANCE_ID = os.environ["CONNECT_INSTANCE_ID"]
 CONNECT_TASK_TEMPLATE_ID = os.environ["CONNECT_TASK_TEMPLATE_ID"]
 CONNECT_CASE_TEMPLATE_ID = os.environ.get("CONNECT_CASE_TEMPLATE_ID", "")
 CASES_DOMAIN_ID = os.environ.get("CASES_DOMAIN_ID", "")
+CUSTOMER_PROFILES_DOMAIN_ARN = os.environ.get("CUSTOMER_PROFILES_DOMAIN_ARN", "")
 
 s3 = boto3.client("s3")
 transcribe = boto3.client("transcribe")
@@ -262,9 +263,9 @@ def _process_completed_job(job_name: str) -> None:
         metadata = json.loads(meta_obj["Body"].read().decode("utf-8"))
         
         # Extract GenAI configuration from metadata
-        genai_summary_str = metadata.get("elevai-connect-vmail-genai-summary", "false")
+        genai_summary_str = metadata.get("elevai-vmail-genai-summary", "false")
         genai_summary_enabled = genai_summary_str.lower() == "true"
-        genai_custom_prompt = metadata.get("elevai-connect-vmail-genai-prompt", "")
+        genai_custom_prompt = metadata.get("elevai-vmail-genai-prompt", "")
         
         logger.info(
             "GenAI configuration read from metadata",
@@ -349,24 +350,26 @@ def _create_connect_task(contact_id: str, wav_key: str, json_key: str, transcrip
         metrics.add_metric(name="TaskMetadataReadFailed", unit=MetricUnit.Count, value=1)
         return
 
-    queue_arn: str = metadata.get("elevai-connect-vmail-queue-arn", "")
-    caller_number: str = metadata.get("elevai-connect-vmail-caller-number", "unknown")
-    destination_channel: str = metadata.get("elevai-connect-vmail-destination-channel", "task")
-    case_template_id: str = metadata.get("elevai-connect-vmail-destination-case-template-id", "") or CONNECT_CASE_TEMPLATE_ID
-    customer_id: str = metadata.get("elevai-connect-vmail-customer-id", "")
+    queue_arn: str = metadata.get("elevai-vmail-queue-arn", "")
+    caller_number: str = metadata.get("elevai-vmail-caller-number", "unknown")
+    destination_channel: str = metadata.get("elevai-vmail-destination-channel", "task")
+    case_template_id: str = CONNECT_CASE_TEMPLATE_ID
+    raw_customer_id: str = metadata.get("elevai-vmail-customer-id", "")
+    customer_id: str = f"{CUSTOMER_PROFILES_DOMAIN_ARN}/profiles/{raw_customer_id}" if raw_customer_id and CUSTOMER_PROFILES_DOMAIN_ARN else raw_customer_id
+    agent_arn: str = metadata.get("elevai-vmail-agent-arn", "")
     account_id: str = metadata.get("accountId", "")
     region: str = metadata.get("region", "")
 
     if not queue_arn:
         logger.warning(
-            "elevai-connect-vmail-queue-arn not found in .metadata – notification will not be created",
+            "elevai-vmail-queue-arn not found in .metadata – notification will not be created",
             extra={"contactId": contact_id},
         )
         metrics.add_metric(name="TaskSkippedNoQueue", unit=MetricUnit.Count, value=1)
         return
 
     if destination_channel == "task":
-        _deliver_via_task(contact_id, wav_key, json_key, transcript, queue_arn, caller_number)
+        _deliver_via_task(contact_id, wav_key, json_key, transcript, queue_arn, caller_number, agent_arn, queue_arn)
     elif destination_channel == "case":
         if not case_template_id or not CASES_DOMAIN_ID:
             logger.warning(
@@ -382,7 +385,7 @@ def _create_connect_task(contact_id: str, wav_key: str, json_key: str, transcrip
             )
             metrics.add_metric(name="CaseSkippedNoCustomerId", unit=MetricUnit.Count, value=1)
             return
-        _deliver_via_case(contact_id, wav_key, json_key, transcript, caller_number, customer_id, case_template_id, account_id, region)
+        _deliver_via_case(contact_id, wav_key, json_key, transcript, caller_number, customer_id, case_template_id, account_id, region, agent_arn, queue_arn)
     else:
         logger.warning(
             "Unsupported destination channel – skipping delivery",
@@ -398,12 +401,17 @@ def _deliver_via_task(
     transcript: str,
     queue_arn: str,
     caller_number: str,
+    assigned_user: str = "",
+    assigned_queue: str = "",
 ) -> None:
     """
     Create an Amazon Connect Task for the voicemail.
 
     Routing is handled by the task contact flow (TransferContactToQueue).
     The queueArn from .metadata is stored as a task attribute for reference.
+    If assigned_user or assigned_queue are provided they are stored as task
+    attributes (AssignedUser / AssignedQueue) and surfaced in the CCP task panel.
+    These are informational only — tasks route via contact flows / quick connects.
     """
     # Task name matches the template default; CallerNumber surfaces the caller in the CCP.
     task_name = "Voicemail"
@@ -419,8 +427,14 @@ def _deliver_via_task(
         "CallerNumber": caller_number,
         "s3WavKey": f"s3://{VMAIL_BUCKET}/{wav_key}",
         "s3JsonKey": f"s3://{VMAIL_BUCKET}/{json_key}",
-        "elevai-connect-vmail-queue-arn": queue_arn,
+        "elevai-vmail-queue-arn": queue_arn,
     }
+
+    # Informational assignment attributes — not used for routing (tasks route via flows/quick connects only)
+    if assigned_user:
+        task_attributes["AssignedUser"] = assigned_user
+    if assigned_queue:
+        task_attributes["AssignedQueue"] = assigned_queue
 
     # References render as named values in the CCP task panel.
     task_references: Dict[str, Dict[str, str]] = {
@@ -472,6 +486,7 @@ def _deliver_via_task(
             Name=task_name,
             Attributes=task_attributes,
             References=task_references,
+            RelatedContactId=contact_id,
         )
         task_id = response.get("ContactId", "")
         logger.info(
@@ -499,6 +514,8 @@ def _deliver_via_case(
     case_template_id: str,
     account_id: str,
     region: str,
+    assigned_user: str = "",
+    assigned_queue: str = "",
 ) -> None:
     """
     Create an Amazon Connect Case for the voicemail and attach the WAV file.
@@ -566,23 +583,30 @@ def _deliver_via_case(
         # Create the case with required fields (customer_id and title) and summary
         case_title = f"Voicemail from {caller_number} - Contact {contact_id}"
         
+        case_fields = [
+            {
+                "id": "customer_id",
+                "value": {"stringValue": customer_id}
+            },
+            {
+                "id": "title",
+                "value": {"stringValue": case_title}
+            },
+            {
+                "id": "summary",
+                "value": {"stringValue": case_summary}
+            },
+        ]
+
+        if assigned_user:
+            case_fields.append({"id": "assigned_user", "value": {"stringValue": assigned_user}})
+        if assigned_queue:
+            case_fields.append({"id": "assigned_queue", "value": {"stringValue": assigned_queue}})
+
         create_case_params = {
             "domainId": CASES_DOMAIN_ID,
             "templateId": case_template_id,
-            "fields": [
-                {
-                    "id": "customer_id",
-                    "value": {"stringValue": customer_id}
-                },
-                {
-                    "id": "title",
-                    "value": {"stringValue": case_title}
-                },
-                {
-                    "id": "summary",
-                    "value": {"stringValue": case_summary}
-                },
-            ],
+            "fields": case_fields,
         }
         logger.info(
             "Calling connectcases.create_case",
@@ -694,11 +718,11 @@ def _deliver_via_case(
                 AssociatedResourceArn=case_arn,
             )
             
-        logger.info(
-            "Voicemail WAV attached to case",
-            extra={"caseId": case_id, "fileName": file_name, "fileSize": file_size, "fileArn": file_arn},
-        )
-        metrics.add_metric(name="CaseFileAttached", unit=MetricUnit.Count, value=1)
+            logger.info(
+                "Voicemail WAV attached to case",
+                extra={"caseId": case_id, "fileName": file_name, "fileSize": file_size, "fileArn": file_arn},
+            )
+            metrics.add_metric(name="CaseFileAttached", unit=MetricUnit.Count, value=1)
     except Exception as exc:
         logger.warning(
             "Failed to attach WAV file to case (case already created)",

@@ -220,6 +220,24 @@ def _get_key_policy(account_id: str, region: str) -> str:
         "kms:GenerateDataKey"
       ],
       "Resource": "*"
+    }},
+    {{
+      "Sid": "Allow Transcribe to decrypt and generate data keys",
+      "Effect": "Allow",
+      "Principal": {{
+        "Service": "transcribe.amazonaws.com"
+      }},
+      "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey",
+        "kms:DescribeKey"
+      ],
+      "Resource": "*",
+      "Condition": {{
+        "StringEquals": {{
+          "aws:SourceAccount": "{account_id}"
+        }}
+      }}
     }}
   ]
 }}"""

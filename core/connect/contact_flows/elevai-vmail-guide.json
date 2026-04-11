@@ -1,0 +1,176 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "6452a1e2-72db-49fb-834d-4bb6a70ca4cb",
+  "Metadata": {
+    "entryPointPosition": {
+      "x": 40,
+      "y": 40
+    },
+    "ActionMetadata": {
+      "6452a1e2-72db-49fb-834d-4bb6a70ca4cb": {
+        "position": {
+          "x": 180,
+          "y": 39.2
+        }
+      },
+      "Get WAV presigned URL": {
+        "position": {
+          "x": 420.8,
+          "y": 41.6
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "LambdaFunctionARN": {
+            "displayName": "{{UTILS_LAMBDA_NAME}}"
+          }
+        },
+        "dynamicMetadata": {
+          "requestType": false,
+          "s3Uri": false,
+          "expiry": false
+        }
+      },
+      "47604724-e492-4a40-b66a-3f2ec704e5f3": {
+        "position": {
+          "x": 666.4,
+          "y": 44
+        },
+        "parameters": {
+          "ViewResource": {
+            "Id": {
+              "displayName": "Elevai-vmail"
+            }
+          },
+          "InvocationTimeLimitSeconds": {
+            "unit": 60
+          },
+          "ViewData": {
+            "vmail_attributes": {
+              "useJson": true
+            },
+            "vmail_player": {
+              "useJson": true
+            },
+            "vmail_transcript": {
+              "useJson": true
+            }
+          }
+        }
+      },
+      "ecd23c51-18bd-4bd8-9572-00fb2a9de020": {
+        "position": {
+          "x": 911.2,
+          "y": 46.4
+        }
+      }
+    },
+    "Annotations": [],
+    "name": "Elevai Vmail Guide",
+    "description": "Displays the voicemail transcript and audio player",
+    "type": "contactFlow",
+    "status": "published",
+    "hash": {}
+  },
+  "Actions": [
+    {
+      "Parameters": {
+        "FlowLoggingBehavior": "Enabled"
+      },
+      "Identifier": "6452a1e2-72db-49fb-834d-4bb6a70ca4cb",
+      "Type": "UpdateFlowLoggingBehavior",
+      "Transitions": {
+        "NextAction": "Get WAV presigned URL"
+      }
+    },
+    {
+      "Parameters": {
+        "LambdaFunctionARN": "{{UTILS_LAMBDA_ARN}}",
+        "InvocationTimeLimitSeconds": "3",
+        "InvocationType": "SYNCHRONOUS",
+        "LambdaInvocationAttributes": {
+          "requestType": "presigned_url",
+          "s3Uri": "$.Attributes.s3WavKey",
+          "expiry": "3600"
+        },
+        "ResponseValidation": {
+          "ResponseType": "STRING_MAP"
+        }
+      },
+      "Identifier": "Get WAV presigned URL",
+      "Type": "InvokeLambdaFunction",
+      "Transitions": {
+        "NextAction": "47604724-e492-4a40-b66a-3f2ec704e5f3",
+        "Errors": [
+          {
+            "NextAction": "47604724-e492-4a40-b66a-3f2ec704e5f3",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "ViewResource": {
+          "Id": "{{VMAIL_VIEW_ARN}}"
+        },
+        "InvocationTimeLimitSeconds": "59940",
+        "ViewData": {
+          "vmail_attributes": {
+            "Attributes": [
+              {
+                "Label": "Default Label 1",
+                "Value": "Default Value 1",
+                "AutoOpen": false,
+                "Copyable": false
+              }
+            ]
+          },
+          "vmail_player": {
+            "Path": "audio-player?src=$.External.presignedUrl"
+          },
+          "vmail_transcript": {
+            "Items": [
+              {
+                "Label": "Caller Number",
+                "Value": "$.Attributes.elevai-vmail-caller-number",
+                "AutoOpen": false,
+                "Copyable": true
+              },
+              {
+                "Label": "Start Time",
+                "Value": "$.Attributes.elevai-vmail-start-time",
+                "AutoOpen": false,
+                "Copyable": false
+              }
+            ]
+          }
+        }
+      },
+      "Identifier": "47604724-e492-4a40-b66a-3f2ec704e5f3",
+      "Type": "ShowView",
+      "Transitions": {
+        "NextAction": "ecd23c51-18bd-4bd8-9572-00fb2a9de020",
+        "Errors": [
+          {
+            "NextAction": "ecd23c51-18bd-4bd8-9572-00fb2a9de020",
+            "ErrorType": "NoMatchingCondition"
+          },
+          {
+            "NextAction": "ecd23c51-18bd-4bd8-9572-00fb2a9de020",
+            "ErrorType": "NoMatchingError"
+          },
+          {
+            "NextAction": "ecd23c51-18bd-4bd8-9572-00fb2a9de020",
+            "ErrorType": "TimeLimitExceeded"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {},
+      "Identifier": "ecd23c51-18bd-4bd8-9572-00fb2a9de020",
+      "Type": "DisconnectParticipant",
+      "Transitions": {}
+    }
+  ]
+}

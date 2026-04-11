@@ -86,7 +86,11 @@ def create_connect_instance(
     contact_flow_logs_enabled = config.get_bool("contactFlowLogsEnabled")
     if contact_flow_logs_enabled is None:
         contact_flow_logs_enabled = True
-    
+
+    contact_lens_enabled = config.get_bool("contactLensEnabled")
+    if contact_lens_enabled is None:
+        contact_lens_enabled = True
+
     # Create Kinesis data streams BEFORE the Connect instance
     # These follow naming standard: <stage>-kds-<purpose>
     data_streams = create_data_streams(tags, kms_key)
@@ -117,6 +121,7 @@ def create_connect_instance(
         tags={**tags, "Name": f"{instance_alias}-connect-instance"},
         multi_party_conference_enabled=multi_party_conference_enabled,
         contact_flow_logs_enabled=contact_flow_logs_enabled,
+        contact_lens_enabled=contact_lens_enabled,
         opts=pulumi.ResourceOptions(
             depends_on=depends_on_resources,
             # Protect the Connect instance from accidental deletion.
@@ -126,11 +131,14 @@ def create_connect_instance(
         )
     )
 
+    # NOTE: "Automated Interaction Logs" in the Connect console has no public API.
+    # It must be enabled manually: Connect console → your instance → Flows →
+    # enable "Automated interaction logs".
     add_manual_step(
-        title="Enable Contact Flow Features",
+        title="Enable Automated Interaction Logs",
         doc_link="docs/POST_DEPLOYMENT_STEPS.md###1-enable-contact-flow-features",
     )
-    
+
     # Configure data streaming for contact trace records and agent events
     configure_instance_data_streaming(connect_instance, data_streams)
     

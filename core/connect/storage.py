@@ -165,7 +165,7 @@ def _create_firehose_bucket(
     
     log_bucket = aws.s3.Bucket(
         bucket_logical,
-        object_lock_enabled=True,
+        object_lock_enabled=False,
         tags={**tags, "Purpose": "ContactFlowLogs"}
     )
     

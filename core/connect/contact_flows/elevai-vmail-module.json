@@ -1,0 +1,524 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "6e54ba13-ef55-44f5-9c83-e0af511d666b",
+  "Metadata": {
+    "entryPointPosition": {
+      "x": -221.6,
+      "y": 41.6
+    },
+    "ActionMetadata": {
+      "f3cc4513-ebe9-41e8-9f22-298fc18da828": {
+        "position": {
+          "x": 146.4,
+          "y": 40
+        }
+      },
+      "6e54ba13-ef55-44f5-9c83-e0af511d666b": {
+        "position": {
+          "x": -96,
+          "y": 40.8
+        }
+      },
+      "Check for terminating key press-copy-1": {
+        "position": {
+          "x": 1940,
+          "y": 41.6
+        },
+        "isFriendlyName": true,
+        "conditionMetadata": [
+          {
+            "id": "83743fbc-2a39-46ff-ba1c-0bb68429d520",
+            "operator": {
+              "name": "Equals",
+              "value": "Equals",
+              "shortDisplay": "="
+            },
+            "value": "?"
+          }
+        ]
+      },
+      "ceea9040-6a2c-43d8-83a0-b7f94648a0b4": {
+        "position": {
+          "x": 1169.6,
+          "y": 41.6
+        },
+        "parameters": {
+          "PromptId": {
+            "displayName": "vmail-beep"
+          }
+        },
+        "promptName": "vmail-beep"
+      },
+      "Check for terminating key press": {
+        "position": {
+          "x": 2208.8,
+          "y": 40
+        },
+        "isFriendlyName": true,
+        "conditionMetadata": [
+          {
+            "id": "ae5401a9-9be9-4a5f-b233-d553cf5e4920",
+            "operator": {
+              "name": "Equals",
+              "value": "Equals",
+              "shortDisplay": "="
+            },
+            "value": "$.Modules.Input.elevai-vmail-terminating-key"
+          }
+        ]
+      },
+      "09efba92-eb3c-40ca-a044-8a9b4fb02beb": {
+        "position": {
+          "x": 2437.6,
+          "y": 352
+        }
+      },
+      "Voicemail continue": {
+        "position": {
+          "x": 1678.4,
+          "y": 44.8
+        },
+        "isFriendlyName": true,
+        "conditionMetadata": [],
+        "countryCodePrefix": "+1"
+      },
+      "Limit key presses and duration": {
+        "position": {
+          "x": 1422.4,
+          "y": 41.6
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "LoopCount": {
+            "useDynamic": true
+          }
+        },
+        "useDynamic": true
+      },
+      "Get start timestamp": {
+        "position": {
+          "x": 403.2,
+          "y": 40
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "LambdaFunctionARN": {
+            "displayName": "{{UTILS_LAMBDA_NAME}}"
+          }
+        },
+        "dynamicMetadata": {
+          "requestType": false
+        }
+      },
+      "Set vmail attributes": {
+        "position": {
+          "x": 908.8,
+          "y": 41.6
+        },
+        "isFriendlyName": true,
+        "dynamicParams": []
+      },
+      "Tag vmail": {
+        "position": {
+          "x": 664,
+          "y": 40
+        },
+        "isFriendlyName": true
+      }
+    },
+    "Annotations": [
+      {
+        "type": "default",
+        "id": "958755de-6b03-4df7-b422-a9236bb76e95",
+        "content": "This module is for voicemail recording. The module requires parameters based on the destination type.\n\nThe module is language agnostic as it plays a beep and handles the recording only. All messages are to be played within the calling flow.",
+        "actionId": "",
+        "isFolded": false,
+        "position": {
+          "x": -606,
+          "y": 54
+        },
+        "size": {
+          "height": 295,
+          "width": 300
+        }
+      },
+      {
+        "type": "default",
+        "id": "4eb3bfa2-df2d-45ff-af97-ac225be8e9aa",
+        "content": "Required parameters:\n\nFor TASKS\n\n- elevai-vmail-destination-channel = task\n- elevai-vmail-queue-arn = [arn] OR elevai-vmail-agent-arn = [arn]\n\n\nfor CASES\n\n- elevai-vmail-destination-channel = case\n- elevai-vmail-queue-arn = [arn] OR elevai-vmail-agent-arn = [arn]\n- elevai-vmail-customer-id = [profile_id]",
+        "actionId": "",
+        "isFolded": false,
+        "position": {
+          "x": -606,
+          "y": 397
+        },
+        "size": {
+          "height": 295,
+          "width": 300
+        }
+      },
+      {
+        "type": "default",
+        "id": "c7c2a1c6-b040-4831-b56f-80786805506d",
+        "content": "Should you require to continue the customer journey please note that this module sets the call recording block to meet the voicemail requirements only. Reset these in your calling flow as required.",
+        "actionId": "",
+        "isFolded": false,
+        "position": {
+          "x": 3321,
+          "y": 447
+        },
+        "size": {
+          "height": 295,
+          "width": 300
+        }
+      },
+      {
+        "type": "default",
+        "id": "7013399b-adc8-4b05-8d9f-e6274302e1b8",
+        "content": "The terminating key press is provided within the module input parameters. By default any key press will trigger the end of the recording",
+        "actionId": "",
+        "isFolded": false,
+        "position": {
+          "x": 3030,
+          "y": -153
+        },
+        "size": {
+          "height": 295,
+          "width": 300
+        }
+      },
+      {
+        "type": "default",
+        "id": "472dff28-988c-48b5-9fe5-5b62b498651e",
+        "content": "Default timeout is 60s or when a key is pressed. Therefore we use the module input elevai-vmail-loops param as a multiplier. \n\nDefault is 3 x 60s = 3 mins.\n\nHowever, if the caller presses an incorrect key that counts as a loop",
+        "actionId": "",
+        "isFolded": false,
+        "position": {
+          "x": 2069,
+          "y": -253
+        },
+        "size": {
+          "height": 295,
+          "width": 300
+        }
+      }
+    ],
+    "name": "Elevai Vmail",
+    "description": "Voicemail capture module — records a message and tags the contact",
+    "status": "published",
+    "settings": {
+      "input": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "elevai-vmail-destination-channel": {
+              "type": "string",
+              "default": "task",
+              "description": "Support for \"task\" or \"case\""
+            },
+            "elevai-vmail-queue-arn": {
+              "type": "string"
+            },
+            "elevai-vmail-customer-id": {
+              "type": "string",
+              "description": "OPTIONAL - Customer profile ARN for case creation"
+            },
+            "elevai-vmail-genai-summary": {
+              "type": "string",
+              "default": "true",
+              "description": "OPTIONAL - Enable GenAI summary generation using Amazon Bedrock. Pass \"true\" to enable."
+            },
+            "elevai-vmail-genai-prompt": {
+              "type": "string",
+              "default": "",
+              "description": "OPTIONAL - Custom prompt for GenAI summary generation"
+            },
+            "elevai-vmail-terminating-key": {
+              "type": "string",
+              "description": "Enter terminating key press such as '1' or '9' or '?' for any",
+              "minLength": 1,
+              "maxLength": 1,
+              "default": "?"
+            },
+            "elevai-vmail-agent-arn": {
+              "type": "string"
+            },
+            "elevai-vmail-loops": {
+              "type": "string",
+              "default": "3",
+              "minLength": 1,
+              "maxLength": 2
+            }
+          },
+          "required": [
+            "elevai-vmail-destination-channel"
+          ]
+        }
+      }
+    },
+    "hash": {}
+  },
+  "Actions": [
+    {
+      "Parameters": {
+        "VoiceBehavior": {
+          "VoiceRecordingBehavior": {
+            "RecordedParticipants": [],
+            "IVRRecordingBehavior": "Enabled"
+          },
+          "VoiceAnalyticsBehavior": {
+            "Enabled": "False"
+          }
+        }
+      },
+      "Identifier": "f3cc4513-ebe9-41e8-9f22-298fc18da828",
+      "Type": "UpdateContactRecordingAndAnalyticsBehavior",
+      "Transitions": {
+        "NextAction": "Get start timestamp",
+        "Errors": [
+          {
+            "NextAction": "Get start timestamp",
+            "ErrorType": "NoMatchingError"
+          },
+          {
+            "NextAction": "Get start timestamp",
+            "ErrorType": "ChannelMismatch"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "FlowLoggingBehavior": "Enabled"
+      },
+      "Identifier": "6e54ba13-ef55-44f5-9c83-e0af511d666b",
+      "Type": "UpdateFlowLoggingBehavior",
+      "Transitions": {
+        "NextAction": "f3cc4513-ebe9-41e8-9f22-298fc18da828"
+      }
+    },
+    {
+      "Parameters": {
+        "ComparisonValue": "$.Modules.Input.elevai-vmail-terminating-key"
+      },
+      "Identifier": "Check for terminating key press-copy-1",
+      "Type": "Compare",
+      "Transitions": {
+        "NextAction": "Check for terminating key press",
+        "Conditions": [
+          {
+            "NextAction": "09efba92-eb3c-40ca-a044-8a9b4fb02beb",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "?"
+              ]
+            }
+          }
+        ],
+        "Errors": [
+          {
+            "NextAction": "Check for terminating key press",
+            "ErrorType": "NoMatchingCondition"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "PromptId": "{{BEEP_PROMPT_ARN}}"
+      },
+      "Identifier": "ceea9040-6a2c-43d8-83a0-b7f94648a0b4",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "Limit key presses and duration",
+        "Errors": [
+          {
+            "NextAction": "Limit key presses and duration",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "ComparisonValue": "$.StoredCustomerInput"
+      },
+      "Identifier": "Check for terminating key press",
+      "Type": "Compare",
+      "Transitions": {
+        "NextAction": "Limit key presses and duration",
+        "Conditions": [
+          {
+            "NextAction": "09efba92-eb3c-40ca-a044-8a9b4fb02beb",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "$.Modules.Input.elevai-vmail-terminating-key"
+              ]
+            }
+          }
+        ],
+        "Errors": [
+          {
+            "NextAction": "Limit key presses and duration",
+            "ErrorType": "NoMatchingCondition"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {},
+      "Identifier": "09efba92-eb3c-40ca-a044-8a9b4fb02beb",
+      "Type": "EndFlowModuleExecution",
+      "Transitions": {}
+    },
+    {
+      "Parameters": {
+        "StoreInput": "True",
+        "InputTimeLimitSeconds": "60",
+        "SSML": "<speak></speak>",
+        "DTMFConfiguration": {
+          "DisableCancelKey": "False",
+          "InterdigitTimeLimitSeconds": "1"
+        },
+        "InputValidation": {
+          "CustomValidation": {
+            "MaximumLength": "1"
+          }
+        }
+      },
+      "Identifier": "Voicemail continue",
+      "Type": "GetParticipantInput",
+      "Transitions": {
+        "NextAction": "Check for terminating key press-copy-1",
+        "Errors": [
+          {
+            "NextAction": "Check for terminating key press-copy-1",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "LoopCount": "$.Modules.Input.elevai-vmail-loops"
+      },
+      "Identifier": "Limit key presses and duration",
+      "Type": "Loop",
+      "Transitions": {
+        "NextAction": "09efba92-eb3c-40ca-a044-8a9b4fb02beb",
+        "Conditions": [
+          {
+            "NextAction": "Voicemail continue",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "ContinueLooping"
+              ]
+            }
+          },
+          {
+            "NextAction": "09efba92-eb3c-40ca-a044-8a9b4fb02beb",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "DoneLooping"
+              ]
+            }
+          }
+        ],
+        "Errors": [
+          {
+            "NextAction": "09efba92-eb3c-40ca-a044-8a9b4fb02beb",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "LambdaFunctionARN": "{{UTILS_LAMBDA_ARN}}",
+        "InvocationTimeLimitSeconds": "3",
+        "InvocationType": "SYNCHRONOUS",
+        "LambdaInvocationAttributes": {
+          "requestType": "timestamp"
+        },
+        "ResponseValidation": {
+          "ResponseType": "STRING_MAP"
+        }
+      },
+      "Identifier": "Get start timestamp",
+      "Type": "InvokeLambdaFunction",
+      "Transitions": {
+        "NextAction": "Tag vmail",
+        "Errors": [
+          {
+            "NextAction": "Tag vmail",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "Attributes": {
+          "elevai-vmail-destination-channel": "$.Modules.Input.elevai-vmail-destination-channel",
+          "elevai-vmail-caller-number": "$.CustomerEndpoint.Address",
+          "elevai-vmail-queue-arn": "$.Modules.Input.elevai-vmail-queue-arn",
+          "elevai-vmail-customer-id": "$.Modules.Input.elevai-vmail-customer-id",
+          "elevai-vmail-start-time": "$.External.timestamp",
+          "elevai-vmail-genai-summary": "$.Modules.Input.elevai-vmail-genai-summary",
+          "elevai-vmail-genai-prompt": "$.Modules.Input.elevai-vmail-genai-prompt",
+          "elevai-vmail-agent-arn": "$.Modules.Input.elevai-vmail-agent-arn"
+        },
+        "TargetContact": "Current"
+      },
+      "Identifier": "Set vmail attributes",
+      "Type": "UpdateContactAttributes",
+      "Transitions": {
+        "NextAction": "ceea9040-6a2c-43d8-83a0-b7f94648a0b4",
+        "Errors": [
+          {
+            "NextAction": "ceea9040-6a2c-43d8-83a0-b7f94648a0b4",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "Tags": {
+          "elevai-vmail": "true"
+        }
+      },
+      "Identifier": "Tag vmail",
+      "Type": "TagContact",
+      "Transitions": {
+        "NextAction": "Set vmail attributes",
+        "Errors": [
+          {
+            "NextAction": "Set vmail attributes",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    }
+  ],
+  "Settings": {
+    "InputParameters": [],
+    "OutputParameters": [],
+    "Transitions": [
+      {
+        "DisplayName": "Success",
+        "ReferenceName": "Success",
+        "Description": ""
+      },
+      {
+        "DisplayName": "Error",
+        "ReferenceName": "Error",
+        "Description": ""
+      }
+    ]
+  }
+}

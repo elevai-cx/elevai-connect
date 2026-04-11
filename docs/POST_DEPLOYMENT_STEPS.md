@@ -36,24 +36,7 @@ These steps must be completed for all Amazon Connect deployments.
 
 - [ ] **Enable Automated Interaction Logs**
   - [Documentation](https://docs.aws.amazon.com/connect/latest/adminguide/monitor-automated-interaction-logs.html)
-  - Enables detailed logging of contact flow execution
-  - Essential for debugging contact flows
 
-- [ ] **Enable Lex Bot Management & Analytics**
-  - [Documentation](https://docs.aws.amazon.com/connect/latest/adminguide/enable-bot-building.html)
-  - Required for Amazon Lex chatbot integration
-  - Enables bot analytics and reporting
-
-- [ ] **Verify Next Generation Amazon Connect is Enabled**
-  - Should be enabled by default for new instances
-  - Provides enhanced features and performance
-  - If not enabled, contact AWS Support
-
-**Verification:**
-```bash
-# These features don't have CLI verification
-# Check in AWS Console under Flows settings
-```
 
 ---
 

@@ -1,32 +1,23 @@
-# Using Claude Code with Amazon Connect Pulumi
+# Using Claude Code with elevai-connect
 
-Manage your Amazon Connect infrastructure through Claude Code's command-line interface using the included MCP server.
+Manage your Amazon Connect infrastructure through Claude Code's command-line interface.
 
 ## What You Can Do
 
-- 🚀 Deploy infrastructure: "Deploy the latest changes to dev"
-- 👀 Preview changes: "Show me what would change if I deployed to staging"
-- ⚙️ Manage configuration: "Update the alarm threshold to 75% in prod"
-- 🔄 Switch environments: "Switch to the production stack"
-- 📊 Query resources: "What's the Connect instance ID for dev?"
+- Deploy infrastructure: "Deploy the latest changes to dev"
+- Preview changes: "Show me what would change if I deployed to staging"
+- Manage configuration: "Update the alarm threshold to 75% in prod"
+- Switch environments: "Switch to the production stack"
+- Query resources: "What's the Connect instance ID for dev?"
 
 ## Quick Start
 
 ### Prerequisites
 
 - Claude Code installed (`npm install -g @anthropic-ai/claude-code`)
-- Node.js 18+ installed
-- This project cloned
+- This project cloned and set up (see [Getting Started](GETTING_STARTED.md))
 
-### 1. Build the MCP Server
-
-```bash
-cd /path/to/elevai-connect/mcp-server
-npm install
-npm run build
-```
-
-### 2. Start Using
+### Start Using
 
 ```bash
 cd /path/to/elevai-connect
@@ -34,9 +25,6 @@ claude
 ```
 
 Try: "List all available Pulumi stacks"
-Try: "What workshops are available"
-
-
 
 ## Example Workflows
 
@@ -53,10 +41,10 @@ Would you like me to proceed?
 
 Claude: Running pulumi up. You'll need to approve in terminal.
 [Waits for your terminal approval]
-✓ Deployment complete!
+Deployment complete!
 ```
 
-⚠️ **Important**: Manual approval is always required in your terminal for deployments.
+**Important**: Manual approval is always required in your terminal for deployments.
 
 ### Check Configuration
 
@@ -68,25 +56,13 @@ Claude: The current budget limit for production is $500.
 
 ## Safety Features
 
-🔒 **Manual Approval Required**: The MCP server never uses `--yes` flag. You must review and approve all changes in your terminal, even when you tell Claude to proceed.
+**Manual Approval Required**: Claude never uses `--yes` flag. You must review and approve all changes in your terminal.
 
-✅ **Auto-approved (read-only)**:
-- Preview changes
-- List stacks  
-- Read configuration
-- View outputs
+**Auto-approved (read-only)**: Preview changes, list stacks, read configuration, view outputs.
 
-❌ **Requires terminal confirmation**:
-- Deploy (`pulumi up`)
-- Destroy resources (`pulumi destroy`)
+**Requires terminal confirmation**: Deploy (`pulumi up`), destroy resources (`pulumi destroy`).
 
 ## Troubleshooting
-
-### MCP server not found
-```bash
-ls /path/to/elevai-connect/mcp-server/dist/index.js
-cd mcp-server && npm run build  # Rebuild if needed
-```
 
 ### Pulumi not in PATH
 ```bash
@@ -111,5 +87,3 @@ aws sts get-caller-identity  # Verify
 
 - **Claude Code Docs**: https://docs.claude.com/en/docs/claude-code
 - **Pulumi Docs**: https://www.pulumi.com/docs/
-
-**Happy deploying! 🚀**

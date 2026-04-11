@@ -19,5 +19,6 @@ Each handler module contains a handle() function that processes specific request
 """
 
 from . import q_connect_tags
+from . import queue_to_agent_arn
 
-__all__ = ['q_connect_tags']
+__all__ = ['q_connect_tags', 'queue_to_agent_arn']

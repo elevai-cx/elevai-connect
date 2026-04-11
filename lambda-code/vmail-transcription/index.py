@@ -13,18 +13,18 @@
 # limitations under the License.
 
 """
-Voicemail Processor Lambda (elevai-connect-vmail)
+Voicemail Processor Lambda (elevai-vmail)
 
 Triggered by SQS messages sourced from EventBridge Amazon Connect
-DISCONNECTED contact events that carry the tag elevai-connect-vmail=true.
+DISCONNECTED contact events that carry the tag elevai-vmail=true.
 
 Processing steps:
 1. Parse the contact event from the SQS body.
 2. Derive the S3 key for the IVR recording from the initiationTimestamp and contactId.
 3. Download the WAV file from the call-recordings bucket.
 4. Trim the audio to [start_time, end_time] using the contact tags:
-     - elevai-connect-vmail-start-time  (required)
-     - elevai-connect-vmail-end-time    (optional; falls back to disconnectTimestamp)
+     - elevai-vmail-start-time  (required)
+     - elevai-vmail-end-time    (optional; falls back to disconnectTimestamp)
 5. Upload the trimmed voicemail WAV to the vmail bucket under:
      voicemails/<YYYY>/<MM>/<DD>/<contactId>.wav
 6. Start an async Amazon Transcribe batch job and exit immediately.
@@ -143,13 +143,13 @@ def _process_record(record: Dict[str, Any]) -> None:
     # ------------------------------------------------------------------
     # Resolve timing
     # ------------------------------------------------------------------
-    start_time = _parse_iso(contact_attributes.get("elevai-connect-vmail-start-time"))
+    start_time = _parse_iso(contact_attributes.get("elevai-vmail-start-time"))
     end_time = _parse_iso(
-        contact_attributes.get("elevai-connect-vmail-end-time") or detail.get("disconnectTimestamp")
+        contact_attributes.get("elevai-vmail-end-time") or detail.get("disconnectTimestamp")
     )
 
     if start_time is None:
-        raise ValueError(f"Missing elevai-connect-vmail-start-time attribute on contact {contact_id}")
+        raise ValueError(f"Missing elevai-vmail-start-time attribute on contact {contact_id}")
     if end_time is None:
         raise ValueError(f"Cannot determine end time for contact {contact_id}")
 
@@ -229,35 +229,33 @@ def _write_metadata(
       - contactId
       - accountId (from event)
       - region (from event)
-      - All elevai-connect-vmail-* attributes from contact attributes
+      - All elevai-vmail-* attributes from contact attributes
       - startTime / disconnectTimestamp
     """
-    queue_arn = contact_attributes.get("elevai-connect-vmail-queue-arn", "")
+    queue_arn = contact_attributes.get("elevai-vmail-queue-arn", "")
     if not queue_arn:
         logger.warning(
-            "elevai-connect-vmail-queue-arn attribute not present – task routing will be unavailable",
+            "elevai-vmail-queue-arn attribute not present – task routing will be unavailable",
             extra={"contactId": contact_id},
         )
 
-    destination_channel = contact_attributes.get("elevai-connect-vmail-destination-channel", "task")
-    case_template_id = contact_attributes.get("elevai-connect-vmail-destination-case-template-id", "")
-    customer_id = contact_attributes.get("elevai-connect-vmail-customer-id", "")
+    destination_channel = contact_attributes.get("elevai-vmail-destination-channel", "task")
+    customer_id = contact_attributes.get("elevai-vmail-customer-id", "")
 
     metadata = {
         "contactId": contact_id,
         "accountId": account_id,
         "region": region,
-        "elevai-connect-vmail-queue-arn": queue_arn,
-        "elevai-connect-vmail-destination-channel": destination_channel,
-        "elevai-connect-vmail-destination-case-template-id": case_template_id,
-        "elevai-connect-vmail-customer-id": customer_id,
-        "elevai-connect-vmail-caller-number": contact_attributes.get("elevai-connect-vmail-caller-number", ""),
-        "elevai-connect-vmail-genai-summary": contact_attributes.get("elevai-connect-vmail-genai-summary", "false"),
-        "elevai-connect-vmail-genai-prompt": contact_attributes.get("elevai-connect-vmail-genai-prompt", ""),
-        "elevai-connect-vmail-start-time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "elevai-vmail-queue-arn": queue_arn,
+        "elevai-vmail-destination-channel": destination_channel,
+        "elevai-vmail-customer-id": customer_id,
+        "elevai-vmail-caller-number": contact_attributes.get("elevai-vmail-caller-number", ""),
+        "elevai-vmail-genai-summary": contact_attributes.get("elevai-vmail-genai-summary", "false"),
+        "elevai-vmail-genai-prompt": contact_attributes.get("elevai-vmail-genai-prompt", ""),
+        "elevai-vmail-agent-arn": contact_attributes.get("elevai-vmail-agent-arn", ""),
+        "elevai-vmail-start-time": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "disconnectTimestamp": detail.get("disconnectTimestamp", ""),
         "initiationTimestamp": detail.get("initiationTimestamp", ""),
-        "attributes": contact_attributes,
     }
 
     metadata_key = wav_key.replace(".wav", ".metadata")
@@ -384,6 +382,10 @@ def _trim_wav(wav_bytes: bytes, offset_ms: int, duration_ms: int) -> bytes:
     Trim a WAV file to [offset_ms, offset_ms + duration_ms] using the
     stdlib wave module. Works on standard PCM WAV files (which Amazon
     Connect IVR recordings always are) with no native dependencies.
+
+    If offset_ms overshoots the recording length (common for short calls where
+    the IVR recording starts slightly after initiationTimestamp), start_frame is
+    clamped to the last available frame so we still capture whatever audio exists.
     """
     with wave.open(io.BytesIO(wav_bytes), "rb") as src:
         frame_rate = src.getframerate()
@@ -394,6 +396,21 @@ def _trim_wav(wav_bytes: bytes, offset_ms: int, duration_ms: int) -> bytes:
         frames_per_ms = frame_rate / 1000.0
         start_frame = int(offset_ms * frames_per_ms)
         end_frame = min(int((offset_ms + duration_ms) * frames_per_ms), total_frames)
+
+        if start_frame >= total_frames:
+            logger.warning(
+                "Trim offset exceeds recording length — clamping to end of file (short call tolerance)",
+                extra={
+                    "offset_ms": offset_ms,
+                    "duration_ms": duration_ms,
+                    "recording_duration_ms": int(total_frames / frames_per_ms),
+                    "total_frames": total_frames,
+                    "start_frame": start_frame,
+                },
+            )
+            start_frame = max(0, total_frames - 1)
+            end_frame = total_frames
+
         n_frames = max(0, end_frame - start_frame)
 
         src.setpos(start_frame)
