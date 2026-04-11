@@ -13,7 +13,7 @@ A comprehensive project for deploying Amazon Connect contact centers with Python
 
 ## Architecture overview
 
-![](/elevai-connect.drawio.png)
+![](./elevai-connect.jpg)
 
 ## Features
 
