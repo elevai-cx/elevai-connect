@@ -48,6 +48,7 @@ temp/
 # Build outputs
 dist/
 build/
+site/
 *.egg-info/
 
 # Amplify app (Vite/React frontend)
