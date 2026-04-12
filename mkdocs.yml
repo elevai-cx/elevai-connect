@@ -23,7 +23,6 @@ theme:
 nav:
   - Home: index.md
   - Getting Started: GETTING_STARTED.md
-  - Post-Deployment Steps: POST_DEPLOYMENT_STEPS.md
   - Core Features:
     - SAML Setup: SAML_SETUP_GUIDE.md
     - Amazon Q: AMAZON_Q_GUIDE.md
