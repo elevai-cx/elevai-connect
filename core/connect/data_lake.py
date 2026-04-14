@@ -306,6 +306,13 @@ TARGET_CATALOG="{args["catalog_id"]}"
 
 echo "Creating resource links in $TARGET_DB from $SOURCE_DB (account: $SOURCE_ACCOUNT)"
 
+# If source account is empty, the RAM share hasn't propagated yet — skip gracefully
+if [ -z "$SOURCE_ACCOUNT" ] || [ "$SOURCE_ACCOUNT" = "null" ]; then
+  echo "Warning: source account ID is empty — RAM share not yet available, skipping resource link creation"
+  printf '{{"created":0,"skipped":0,"total":0}}'
+  exit 0
+fi
+
 # List of tables to create links for
 TABLES=({" ".join(data_set_ids)})
 

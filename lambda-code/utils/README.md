@@ -11,7 +11,10 @@ lambda/utils/
 ├── index.py                    # Main router
 ├── handlers/                   # Handler modules
 │   ├── __init__.py
-│   └── q_connect_tags.py      # Amazon Q in Connect tag filtering
+│   ├── queue_to_agent_arn.py   # Agent ARN extraction from queue ARN
+│   ├── presigned_url.py       # S3 presigned URL generation
+│   ├── q_connect_tags.py      # Amazon Q in Connect tag filtering
+│   └── timestamp.py           # UTC timestamp generation
 └── requirements.txt
 ```
 
@@ -108,6 +111,67 @@ If an error occurs, the response will include:
 - `status-code`: 400 (bad request) or 500 (server error)
 - `body`: Descriptive error message
 - `error`: `true`
+
+### `timestamp` - UTC Timestamp Generation
+
+Returns the current UTC (Zulu) time as an ISO 8601 string and epoch milliseconds. Useful for marking points in a contact flow — e.g. to later trim a WAV recording to exact timestamps.
+
+#### Usage in Amazon Connect Contact Flow
+
+1. Add an **Invoke AWS Lambda function** block
+2. Configure:
+   - `requestType`: `timestamp`
+   - No additional parameters required
+
+#### Response Attributes
+
+- `status-code`: `200`
+- `timestamp`: ISO 8601 Zulu string, e.g. `2026-03-28T19:42:02.368Z`
+- `timestamp-epoch`: Milliseconds since epoch, e.g. `1743191322368`
+
+---
+
+### `presigned_url` - S3 Presigned URL Generation
+
+Generates presigned S3 URLs for voicemail objects (WAV recordings and JSON transcripts) stored in the vmail bucket. Accepts S3 URIs in the form `s3://bucket-name/key/path`.
+
+#### Usage in Amazon Connect Contact Flow
+
+1. Add an **Invoke AWS Lambda function** block
+2. Configure:
+   - `requestType`: `presigned_url`
+   - `s3Uri`: S3 URI to generate a presigned URL for (required)
+   - `expiry`: Optional URL expiry in seconds (default: 3600)
+
+#### Response Attributes
+
+- `status-code`: `200`
+- `presignedUrl`: HTTPS presigned URL
+
+---
+
+### `queue_to_agent_arn` - Agent ARN Extraction
+
+Extracts the agent ARN from an agent-queue ARN found in `ContactData.Queue.ARN`. Amazon Connect agent queues use the form `arn:aws:connect:<region>:<account>:instance/<id>/queue/agent/<agent-id>`, but many Connect APIs require the shorter agent ARN `arn:aws:connect:<region>:<account>:instance/<id>/agent/<agent-id>`. This handler performs that conversion.
+
+#### Usage in Amazon Connect Contact Flow
+
+1. Add an **Invoke AWS Lambda function** block
+2. Configure:
+   - `requestType`: `queue_to_agent_arn`
+   - Optionally pass `queueArn` to override the value from `ContactData.Queue.ARN`
+
+#### Response Attributes
+
+- `status-code`: `200`
+- `agent-arn`: The converted agent ARN
+- `agent-id`: The agent ID extracted from the ARN
+
+#### Error Responses
+
+- `status-code`: `400` — No Queue ARN available, or the ARN is not an agent queue ARN
+
+---
 
 ## Adding New Handlers
 

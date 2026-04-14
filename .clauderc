@@ -1,12 +1,10 @@
 # Claude Code Configuration
 
-## Welcome to elevai-connect! 👋
+## Welcome to elevai-connect!
 
-This is the elevai-connect Amazon Connect Pulumi infrastructure project. 
+This is the elevai-connect Amazon Connect Pulumi infrastructure project.
 
 **First time here?** Start by reading `CLAUDE.md` which contains critical safety rules for deployments.
-
-**Working on a feature?** Check the workshops in `workshops/` directory for hands-on tutorials.
 
 ## Project Context
 
@@ -16,33 +14,11 @@ This project manages Amazon Connect infrastructure with:
 - Amazon Q integration
 - Modular architecture (core + custom)
 
-⚠️ **Before ANY deployment:** Always read `CLAUDE.md` for critical safety rules.
-
-## Available Workshops
-
-Users can work through the following workshops located in the `workshops/` directory:
-
-### 1. Amazon Q Knowledge Base Setup
-**Location:** `workshops/q-knowledgebase-set-up/`  
-**Duration:** 30-45 minutes  
-**Level:** Beginner
-
-**What you'll build:**
-- Upload documents to Q Knowledge Base
-- Configure metadata and tagging
-- Create Lex bots for FAQ handling
-- Import and test Connect contact flows
-
-**To start:** Read `workshops/q-knowledgebase-set-up/README.md`
-
 ## Quick Start Commands
 
 ```bash
 # Preview changes before deploying (ALWAYS do this first)
 pulumi preview --stack dev
-
-# Deploy using MCP tool (Claude will use this)
-# (Don't run manually - let Claude use MCP tool)
 
 # View current outputs
 pulumi stack output
@@ -56,25 +32,24 @@ pulumi stack ls
 - `CLAUDE.md` - **READ THIS FIRST** - Contains critical safety rules and project documentation
 - `Pulumi.*.yaml` - Stack configuration files
 - `custom/` - Directory for user extensions (safe to modify)
-- `core/` - Core infrastructure (do not modify)
-- `workshops/` - Hands-on tutorials
+- `core/` - Core infrastructure
+- `docs/` - Documentation guides
+- `examples/` - Sample files (Q knowledgebase etc.)
 
 ## Important Reminders for Claude
 
-⚠️ **CRITICAL SAFETY RULES:**
-- ✅ Always use `pulumi preview` (bash) before deployments
-- ✅ Use MCP tool `pulumi_up` for actual deployments (NOT bash command)
-- ✅ Use MCP tool `update_stack_config` for configuration changes
-- ✅ Use MCP tool `pulumi_destroy` for resource destruction (NOT bash command)
-- ❌ NEVER use `--yes` flag with any Pulumi command
-- ❌ NEVER modify files in `core/` directory
-- ✅ Add custom code only to `custom/` directory
+**CRITICAL SAFETY RULES:**
+- Always use `pulumi preview` (bash) before deployments
+- Use MCP tool `pulumi_up` for actual deployments (NOT bash command)
+- Use MCP tool `update_stack_config` for configuration changes
+- Use MCP tool `pulumi_destroy` for resource destruction (NOT bash command)
+- NEVER use `--yes` flag with any Pulumi command
 
 ## Current Stack
 
 Remember to always check which stack you're working on:
 - `dev` - Development environment
-- `staging` - Staging environment  
+- `staging` - Staging environment
 - `prod` - Production environment
 
 **Use:** `pulumi stack select <stack-name>` to switch stacks.
@@ -83,9 +58,4 @@ Remember to always check which stack you're working on:
 
 1. Check `CLAUDE.md` for comprehensive documentation
 2. Look in `docs/` directory for specific guides
-3. Try a workshop in `workshops/` directory
-4. Ask Claude Code for assistance!
-
----
-
-*Ready to work on elevai-connect infrastructure. What would you like to build today?*
+3. `docs/GETTING_STARTED.md` for initial setup walkthrough

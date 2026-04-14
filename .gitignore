@@ -48,12 +48,23 @@ temp/
 # Build outputs
 dist/
 build/
+site/
 *.egg-info/
 
-# MCP Server
-mcp-server/node_modules/
-mcp-server/dist/
-mcp-server/package-lock.json
+# Amplify app (Vite/React frontend)
+amplify-app/app/node_modules/
+amplify-app/app/dist/
+amplify-app/app/amplify-app.zip
+
+# Amplify service (headless background service)
+amplify-app/service/node_modules/
+amplify-app/service/dist/
+amplify-app/service/amplify-service.zip
+
+# Amplify toolkit Vite/React frontend)
+amplify-app/toolkit/node_modules/
+amplify-app/toolkit/dist/
+amplify-app/toolkit/amplify-service.zip
 
 # Testing
 .pytest_cache/

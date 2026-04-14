@@ -1,0 +1,132 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "a09d5521-42cb-445c-8f1d-74cf107cfd5d",
+  "Metadata": {
+    "entryPointPosition": {
+      "x": 40,
+      "y": 40
+    },
+    "ActionMetadata": {
+      "a09d5521-42cb-445c-8f1d-74cf107cfd5d": {
+        "position": {
+          "x": 171.2,
+          "y": 39.2
+        }
+      },
+      "a2279357-0eaa-4171-84f1-a9bbc158b475": {
+        "position": {
+          "x": 433.6,
+          "y": 42.4
+        },
+        "parameters": {
+          "QueueId": {
+            "useDynamic": true
+          }
+        },
+        "useDynamic": true
+      },
+      "Set guide event flow": {
+        "position": {
+          "x": 700.0,
+          "y": 42.4
+        },
+        "isFriendlyName": true,
+        "parameters": {
+          "EventHooks": {
+            "DefaultAgentUI": {
+              "displayName": "Elevai Vmail Guide"
+            }
+          }
+        }
+      },
+      "12ce2950-5114-4324-8723-8f254cb3e181": {
+        "position": {
+          "x": 980.0,
+          "y": 42.4
+        }
+      },
+      "85fa42f7-840a-4092-8a41-9eb43e3a17b4": {
+        "position": {
+          "x": 1260.0,
+          "y": 42.4
+        }
+      }
+    },
+    "Annotations": [],
+    "name": "Elevai Vmail Task",
+    "description": "Task contact flow for voicemail tasks.",
+    "type": "contactFlow",
+    "status": "published",
+    "hash": {}
+  },
+  "Actions": [
+    {
+      "Parameters": {
+        "FlowLoggingBehavior": "Enabled"
+      },
+      "Identifier": "a09d5521-42cb-445c-8f1d-74cf107cfd5d",
+      "Type": "UpdateFlowLoggingBehavior",
+      "Transitions": {
+        "NextAction": "a2279357-0eaa-4171-84f1-a9bbc158b475"
+      }
+    },
+    {
+      "Parameters": {
+        "QueueId": "$.Attributes.elevai-vmail-queue-arn"
+      },
+      "Identifier": "a2279357-0eaa-4171-84f1-a9bbc158b475",
+      "Type": "UpdateContactTargetQueue",
+      "Transitions": {
+        "NextAction": "Set guide event flow",
+        "Errors": [
+          {
+            "NextAction": "Set guide event flow",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "EventHooks": {
+          "DefaultAgentUI": "{{VMAIL_GUIDE_FLOW_ARN}}"
+        }
+      },
+      "Identifier": "Set guide event flow",
+      "Type": "UpdateContactEventHooks",
+      "Transitions": {
+        "NextAction": "12ce2950-5114-4324-8723-8f254cb3e181",
+        "Errors": [
+          {
+            "NextAction": "12ce2950-5114-4324-8723-8f254cb3e181",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {},
+      "Identifier": "12ce2950-5114-4324-8723-8f254cb3e181",
+      "Type": "TransferContactToQueue",
+      "Transitions": {
+        "NextAction": "85fa42f7-840a-4092-8a41-9eb43e3a17b4",
+        "Errors": [
+          {
+            "NextAction": "85fa42f7-840a-4092-8a41-9eb43e3a17b4",
+            "ErrorType": "QueueAtCapacity"
+          },
+          {
+            "NextAction": "85fa42f7-840a-4092-8a41-9eb43e3a17b4",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {},
+      "Identifier": "85fa42f7-840a-4092-8a41-9eb43e3a17b4",
+      "Type": "DisconnectParticipant",
+      "Transitions": {}
+    }
+  ]
+}

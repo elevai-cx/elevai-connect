@@ -46,13 +46,17 @@ def create_logging_bucket(
         S3 bucket for access logs
     """
     bucket_args = {
-        "object_lock_enabled": True,
+        "object_lock_enabled": False,
         "tags": {**tags, "Purpose": "AccessLogs"},
     }
     if bucket_name:
         bucket_args["bucket"] = bucket_name
-    
-    bucket = aws.s3.Bucket(resource_name, **bucket_args)
+
+    bucket = aws.s3.Bucket(
+        resource_name,
+        opts=pulumi.ResourceOptions(retain_on_delete=True),
+        **bucket_args,
+    )
     
     aws.s3.BucketVersioning(
         f"{resource_name}-versioning",
@@ -158,7 +162,7 @@ def create_secure_s3_bucket(
     logging_bucket: Optional[aws.s3.Bucket] = None,
     archive_days: int = 90,
     deletion_days: int = 365,
-    enable_object_lock: bool = True,
+    enable_object_lock: bool = False,
     additional_policy_statements: Optional[list] = None,
     lifecycle_rules: Optional[list] = None,
     bucket_name: Optional[str] = None,
@@ -182,7 +186,7 @@ def create_secure_s3_bucket(
         logging_bucket: Optional bucket for access logs
         archive_days: Days before transitioning to IA storage (default: 90)
         deletion_days: Days before object expiration (default: 365)
-        enable_object_lock: Enable Object Lock (default: True)
+        enable_object_lock: Enable Object Lock (default: False)
         additional_policy_statements: Optional additional bucket policy statements
         lifecycle_rules: Optional custom lifecycle rules (overrides archive/deletion)
         bucket_name: Optional physical bucket name (if not provided, AWS auto-generates)
@@ -196,8 +200,12 @@ def create_secure_s3_bucket(
     }
     if bucket_name:
         bucket_args["bucket"] = bucket_name
-    
-    bucket = aws.s3.Bucket(resource_name, **bucket_args)
+
+    bucket = aws.s3.Bucket(
+        resource_name,
+        opts=pulumi.ResourceOptions(retain_on_delete=True),
+        **bucket_args,
+    )
     
     aws.s3.BucketVersioning(
         f"{resource_name}-versioning",
@@ -244,10 +252,21 @@ def create_secure_s3_bucket(
                 }
             }
         ]
-        
+
         if additional_policy_statements:
-            statements.extend(additional_policy_statements)
-        
+            # Replace the wildcard resource sentinel with the real bucket ARN
+            # so callers can pass statements without knowing the bucket name.
+            resolved = []
+            for stmt in additional_policy_statements:
+                s = dict(stmt)
+                resource = s.get("Resource")
+                if resource == "arn:aws:s3:::*/*":
+                    s["Resource"] = f"{arn}/*"
+                elif resource == "arn:aws:s3:::*":
+                    s["Resource"] = arn
+                resolved.append(s)
+            statements.extend(resolved)
+
         return json.dumps({
             "Version": "2012-10-17",
             "Statement": statements

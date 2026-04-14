@@ -24,6 +24,7 @@ Resource Type: lbd (64 char limit)
 
 from typing import Dict, Optional
 import os
+import sys
 import subprocess
 import shutil
 import hashlib
@@ -273,7 +274,7 @@ def install_requirements_archive(
         try:
             subprocess.check_call(
                 [
-                    "pip", "install",
+                    sys.executable, "-m", "pip", "install",
                     "-r", requirements_path,
                     "-t", build_dir,
                     "--platform", "manylinux2014_aarch64",

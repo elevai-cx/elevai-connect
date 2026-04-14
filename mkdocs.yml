@@ -1,0 +1,54 @@
+site_name: Elevai Connect
+site_description: Production-ready Amazon Connect infrastructure as code
+site_url: https://elevai-cx.github.io/elevai-connect/
+repo_url: https://github.com/elevai-cx/elevai-connect
+repo_name: elevai-cx/elevai-connect
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: indigo
+    accent: purple
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Home: index.md
+  - Getting Started: GETTING_STARTED.md
+  - Core Features:
+    - SAML Setup: SAML_SETUP_GUIDE.md
+    - Amazon Q: AMAZON_Q_GUIDE.md
+    - Business User Interface: BUI_GUIDE.md
+    - Analytics Data Lake: ANALYTICS_DATA_LAKE.md
+  - Operations:
+    - Monitoring & Alerting: MONITORING_GUIDE.md
+  - Customization:
+    - Custom Extensions: CUSTOM_EXTENSIONS_GUIDE.md
+    - Parameter Store: PARAMETER_STORE_GUIDE.md
+  - Claude Code Setup: CLAUDE_CODE_SETUP.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/elevai-cx/elevai-connect
